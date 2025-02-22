@@ -1,0 +1,10 @@
+Alt:
+Document:
+- doc content
+- doc secret keys
+    - clients manage their own copies of secret keys using a separate service
+- doc members list
+    - in the doc?
+Client Secret Key Management:
+- client has their own block of secret keys
+- to share a secret key with a client

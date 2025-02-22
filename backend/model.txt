@@ -107,3 +107,43 @@ MAYBE:
 other problems:
 - might not scale well to non-intamate sharing scenario, eg a public blog post with a comments section. We could have thousands of readers, and each reader would need a unique writing key that only allows them to do actions that are in their own name (eg make a comment from their own name, edit only their own comment)
     - would want to embed the users IDentity into the action for when it resolves. so if we want this we might as well make a system where user embeds it every time right for simplicity. But we don't actually need this scenario
+
+---------
+Loading a document
+- start with base document ID
+- get the webpage
+- load the base document
+    - get the document content
+    - get the document keys
+    - decrypt the keys, decrypt the document
+    - document may just contain ID of some subdocuments (+ key of them?)
+- get any subdocuments
+    - get subdoc content
+    - get subdoc keys?
+    - decrypt the content
+
+
+any gets that are next to each other can be merged. encrypted base doc content and key package can be SSRed into webpage for example. sub
+can we deduplicate the 1st needed subdoc and embed into the 1st doc?
+can we ask for the subdoc IDs that we want straight away (can store these right)
+
+---
+
+alternative model mods:
+*) all writes are signed by who is writing (maybe post-encryption / visible to server, or maybe not)
+    - if not shown to server, clients receive all writes but reject them if they are not allowed. server could still screen out writes from clients who are not allowed to write at all
+
+*) clients manage their own secret keys, to share a secret key to a client fully share it out of band. 
+    - no such thing as public keys in relation to documents
+    - what to do for key rotation? 
+        - clients could manage their own identity:public key pairs,
+          and doc could store a list of identities
+        - doc key rotator could send new keys to identities
+        or could write the new key into the document encrypted with the old key - but for a limited time? so that theres PCS if the attacker looks away while everyone switches keys?
+            - what if a user doesn't log in for a long time, will they still have access?
+        - public/private key rotation could be unessesary as we could always send secret keys out of band (like on signal) and then eventually make the band ourselves, but just copy signal.
+        - user private key that manages his other secret keys might want to be rotate his key, in that case he can do it easily as it only affects him (reencrypt the values of everything)
+
+
+
+
