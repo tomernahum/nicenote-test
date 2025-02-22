@@ -1,0 +1,109 @@
+
+Document:
+- document secret keys   (not known by server)
+    - read key
+    - write key (used for signing write attempts)
+        - can have multiple for different groups of actions (eg public and private)
+    - permissions write key (used for signing writes to permissions)
+        - maybe reads to permissions should be encrypted seperately
+- public key directory + permissions directory     (encrypted with doc read key)
+    - public keys of all those who have read keys
+    - public keys of all those who have write keys
+    - public keys of all those who have admin write keys
+    - also include usernames to pair with public keys?
+- secret key package directory:
+    - for each person in the public key directory, include the appropriate document keys for them to fetch (encrypted with their public key)
+- document content     (encrypted with doc read key)
+    - list of docActions
+- document server-known info  
+    - document identifier
+    - edit & admin public key to verify signing
+    - maybe: potentialBreach trigger and documentDeprecated trigger
+
+
+Document API:
+- get document permissions directory (see who else is on a document)
+- get secret key package for a public key (ie yours)
+- add someone to a permission of the document:
+    - client will get their secret key package
+    - decrypt it to get the appropriate secret key
+    - get the public key of the person they want to add
+        (can send this out of band)
+    - encrypt the appropriate key with their public key
+    - add the secret key package to the document directory on the server
+        - signed with admin key or else the server will reject this
+    - notify the other person that they are added to the doc and there is a secret key package waiting for them
+- get document content
+- change document content
+    - client constructs the change they want (probably an action)
+    - client signs this change with the edit secret key
+    - sends signed change to the server
+    - server uses the edit public key to verify that the edit was from someone with the edit key 
+        - if it's not, the server rejects this edit 
+    - server combines the client's change with the server document content
+    - server notifies other interested clients of the change
+    - other clients also verify the change was from someone with the correct signing key, in case the server turned evil
+        - if it's not, clients reject the edit and log an error or something
+- Rotate the document keys &/OR Remove someone's permissions
+    - an admin permission client will decide to do this
+    - client will get the document state
+    - client will get the secret keys from their key package (admins know all 3 secret keys)
+    - client will get the public keys and their permissions from the server (decrypting it)
+    - client will generate new secret keys (all 3)
+    - client will decrypt the document state
+    - client will maybe merge the document state while they are at it
+    - client will reencrypt the document state with the new secret read key
+    - client will encrypt the new secret keys with each of the public keys of all those who they want to stay in the document, making new secret key packages for each client
+    - client will tell the server about the document rotation event, siging their message with their admin key
+        - server will verify it's really an admin.
+            - (alternatively any user could do a similar process to this but just with creating a new document instead of changing an existing one)
+    - client will send the server the updated public key directory 
+    - client will send the server the new secret key packages
+    - client will send the server the new document content
+    Either:
+        - the server will generate a new document out of the old document data, with a new document id
+            - the server will eventually delete the old document key packages at least for those who are revoked, and delete the old document data, except that we can't know if a malicious client has kept a copy of it locally, but it still helps in case they haven't. 
+            - client will generate an update for the old document containing the fact that this document is deprecated, and where to find the new document
+            - client will send the server that update to the old document
+        - or the server will replace the data at the current document with the new document data, but keeping the same docId
+            - clients who have been revoked who try to connect will fail
+            - clients who have not been revoked will have to refetch their secret key package, and refetch the document state, but that's fine
+
+- In the event that a user get's their private key compromised, all documents they are a part of are considered compromised. All documents are marked for key rotation and revocation of the compromised user's key.  We have to wait for an admin to do this, in the meantime we can reject writes
+    - problem: what if we do not know that their key got compromised? there is no automatic rotation of client private keys (yet) see problems section below
+    - we will then want to also readd the users new uncompromised key 
+        - can handle this out of band for now. ie the user tells document owner "my account got hacked, please reshare the document with my new account!"
+        - or not:
+
+
+
+problems:
+- document server knows how many secret key packages there are. Could encrypt them all again into one block, but then would need to send clients the key to that block not just the id of the document
+- a non-admin client (for example a writing client), could share access to the document with another client if they just share the keys directly with them. the server would reject storing a secret key package for them, but the other client could just store the keys itself (trivial to do). 
+    - mitigations: we can also verify the users identity on the server before allowing writes, either with their public key or a traditional auth permissions system. But this would expose to the server exactly who is on a document (which it can already guess maybe by seeing who is fetching a document)
+    - maybe we could have some sort of alternative system where we force user to have to share their whole private key (ie their permissions for every document) in order to share their permissions for one document.
+        - (i don't think it's possible to have a system where they can not share at all, as they can always share their username and password)
+- no plan yet for automatic key rotation - only rotate keys when an admin does it. this might be a problem? idk.  but the bigger problem is the next bullet
+    - also, rotating keys might be disruptive if another client makes a write while a client is rotating the keys (the write might be lost since it's for the old document). Which means there is a cost to doing key rotations that make us not want to do it after every single message
+        - can add downtime warning to the document that changes might be lost while a key rotation is being performed. can add planned downtime at intervals
+    - can work in a way to do regular key rotation, since we already have mechanism for manual key roation. maybe every 1 day a key rotation is marked as needed. then a client sees that and does the key rotation next time they load the document, maybe just at a time without a lot of other connected users (since it causes very brief downtime)
+- no automatic revocation or rotation of user private keys inside the secret key package (yet), meaning no PCS and  if a user gets their secret key compromised...
+    - user can do this by
+
+--
+MAYBE:
+- user can trigger a rotation of their public/private keypair to replace their public key with a new one. 
+    - user tells server their public key has updated, and their new public key signing the message with their private key
+        - we may need a separate private key for signing messages and decrypting, im sure that's integrable
+    - server collects all the secret key packages for that user, or user asks for all of them by name, user reencrypts it and reuploads the new versions
+        - not sure if we should store secret keypackages next to the document or all together for a user.  
+    - problem: someone who steals the private key could quickly do this and original holder of private key would have no way to recover their account. 
+    Perhaps any holder of a past private key should be able to fully revoke that whole key and it's descendants  (I think we could implement that), then the user would be responsible to make a brand new account, copying over his document data and convincing others out of band to reshare the docs to his  new account
+        - attacker could try to social engineer users out of band to be readded to the account. but not every problem is preventable, and users would partially blame themselves / take responsibility if that happened, not only blame us
+    
+    
+
+
+other problems:
+- might not scale well to non-intamate sharing scenario, eg a public blog post with a comments section. We could have thousands of readers, and each reader would need a unique writing key that only allows them to do actions that are in their own name (eg make a comment from their own name, edit only their own comment)
+    - would want to embed the users IDentity into the action for when it resolves. so if we want this we might as well make a system where user embeds it every time right for simplicity. But we don't actually need this scenario
