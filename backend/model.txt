@@ -5,7 +5,7 @@ Document:
     - write key (used for signing write attempts)
         - can have multiple for different groups of actions (eg public and private)
     - permissions write key (used for signing writes to permissions)
-        - maybe reads to permissions should be encrypted seperately
+        - maybe reads to permissions should be encrypted separately
 - public key directory + permissions directory     (encrypted with doc read key)
     - public keys of all those who have read keys
     - public keys of all those who have write keys
