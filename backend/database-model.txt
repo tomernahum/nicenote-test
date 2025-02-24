@@ -14,7 +14,7 @@ OUR DB INTERACTION:
             - if section is merged together than this might involve a read in order to maintain the end of it. maybe we can avoid it
         - OR have a full list (never delete), & have a seperate list of points in time to replace from. then you access both lists on read, 
             - then there should really be no read-writes, not even updates
-
+- no read -write transactions
 
 > writes *are* ultimately based on reads, but the way they are determined is asynchronously by user interaction. 
 the user needs to be kept up to date with the latest state, then he can do writes. writes that conflict with other user's writes will be merged with best-guess logic. 

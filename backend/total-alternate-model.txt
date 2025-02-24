@@ -11,3 +11,46 @@ new person joins - they need to catch up to current state of document
     - could ask for it, but then waiting for someone to be online
     - maybe we could add someone to the groupchat straight away after the inviter adds them
 
+-----------------------------
+
+Pasted from G-docs:
+
+We copy signal’s code for every aspect of everything - contact discovery (with their new usernames feature), messaging everything. Maybe we even fork the signal client itself and wrap all it’s ui functions, if that’s possible
+
+Then we need to turn ephemeral messages into consistent document
+
+
+Create a document:
+Create a groupchat
+Change a document
+Send message to groupchat defining change
+`Change: actionName: “”, actionParams: “”`
+Squash Document
+Send a specific message to the groupchat containing your view on the document state
+Specify your latest known message in case a write comes in at same time as your squash goes out and the write messages ends up in order before your squash message
+`Squash: State: “docstate” Last Message Squashed: “messageid”`
+Share a document read-write
+Add someone as a contact or have them already / know their contact id
+Add them to the groupchat
+They won’t see the history before they were addded
+Send a new docstate squash message so they can catch up
+Wait 1 second before doing so, so that any messages that come in at same time as your squash and end up ordered before it are visible to the new user as well
+Maybe better way?
+They are now good
+Get Document
+Retrieve your last known copy of document state
+Turn on listening to new messages, update your state with any messages you missed
+User gets compromised then uncompromised / key gets compromised
+Group chats are self healing thanks to PCS so no special key rotations needed??
+--
+Share a document read only
+Idk, maintain a list of members who are allowed to read and ignore writes from other members - but then readers can spam you - what if you want to share read link semi-publically
+Also might not want to reveal writer contact info to the readers - idk if that’s supported
+Share doc by secret url
+IDK if it’s possible? Maybe
+Generate url using signal.group feature of signal
+New user opens url
+They automatically register for an anonymous account without having to input anything
+They are added to the groupchat
+Problem: Oh no now they need catchup message!! Back to separate catchup problem
+They are added to a list inside the document state of by-url users, so that when the url is revoked it will be known to revoke them too
