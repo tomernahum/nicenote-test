@@ -1,0 +1,13 @@
+current model:
+documents are lists of actions. each action is encrypted
+server manages storing the documents in a centralized place, and notifying clients of actions
+
+
+we fork signal/libsignal, or find an equivilent library, to get all their hard work on cryptography
+
+each document is a group chat in signal
+each person stores their own copy of the state of the document. they store this as encrypted online backup since we want to have low/no-storage client
+new person joins - they need to catch up to current state of document
+    - could ask for it, but then waiting for someone to be online
+    - maybe we could add someone to the groupchat straight away after the inviter adds them
+
