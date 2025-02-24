@@ -1,12 +1,12 @@
 
-Document:
+Document State/Info:
 - document secret keys   (not known by server)
-    - read key
-    - write key (used for signing write attempts)
-        - can have multiple for different groups of actions (eg public and private)
-    - permissions write key (used for signing writes to permissions)
-        - maybe reads to permissions should be encrypted separately
-- public key directory + permissions directory     (encrypted with doc read key)
+    - read key (symmetric)
+    - edit signing key - public and private keypir    
+- (used for signing write attempts) & 
+          - permissions (=admin) write key (used for signing writes to permissions)
+         - maybe reads to permissions should be encrypted separately
+- public key directory + permissions directory      (encrypted with doc read key)
     - public keys of all those who have read keys
     - public keys of all those who have write keys
     - public keys of all those who have admin write keys
@@ -15,35 +15,48 @@ Document:
     - for each person in the public key directory, include the appropriate document keys for them to fetch (encrypted with their public key)
 - document content     (encrypted with doc read key)
     - list of docActions
-- document server-known info  
+- document server-known info 
     - document identifier
     - edit & admin public key to verify signing
     - maybe: potentialBreach trigger and documentDeprecated trigger
 
 
+
+
 Document API:
+- create a brand new document
+	- client generates symmetric secret key K_read  
+     - client generates signature key pair (VK, SK)
+
+
 - get document permissions directory (see who else is on a document)
 - get secret key package for a public key (ie yours)
-- add someone to a permission of the document:
-    - client will get their secret key package
+- add someone to a permission of the document (client A adding client B):
+    - client A will get their secret key package
     - decrypt it to get the appropriate secret key
-    - get the public key of the person they want to add
-        (can send this out of band)
-    - encrypt the appropriate key with their public key
+    - get the public key of the person they want to add (B) 
+         (can send this out of band)
+    - encrypt the appropriate key with their public key (ie prepare secret key package)
     - add the secret key package to the document directory on the server
-        - signed with admin key or else the server will reject this
-    - notify the other person that they are added to the doc and there is a secret key package waiting for them
-- get document content
+         - signed with admin key or else the server will reject this
+    - notify the other person that they are added to the doc and there is a secret key package waiting for them. 
+
+
+- get document content  
 - change document content
     - client constructs the change they want (probably an action)
-    - client signs this change with the edit secret key
+    - client signs this change with the edit key
     - sends signed change to the server
-    - server uses the edit public key to verify that the edit was from someone with the edit key 
-        - if it's not, the server rejects this edit 
+    - server uses the edit public key to verify that the edit was from someone with the edit key
+         - if it's not, the server rejects this edit
     - server combines the client's change with the server document content
+		- either replaces doc or adds change to end
     - server notifies other interested clients of the change
-    - other clients also verify the change was from someone with the correct signing key, in case the server turned evil
-        - if it's not, clients reject the edit and log an error or something
+    - other clients optionally also verify the change was from someone with the correct signing key, in case the server turned evil
+         - if it's not, clients reject the edit and log an 
+error or something
+         - …
+
 - Rotate the document keys &/OR Remove someone's permissions
     - an admin permission client will decide to do this
     - client will get the document state
