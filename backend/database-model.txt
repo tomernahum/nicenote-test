@@ -1,0 +1,24 @@
+
+we are essentially building a realtime database (oops). luckily we can get by without strict guarantees
+there is our app, and there is the actual db that we will use, henceforth referred to as db
+    > similarly we are also building our own cryptosystem wrapper = our own cryptosystem
+      despite these 2 impossible tasks that are their own fields of lifework i am still confident we can do a good _enough_ job
+
+
+OUR DB INTERACTION:
+- READ ONLY
+- WRITE ONLY
+    - ADD ACTION TO END OF LIST
+    - REPLACE START SECTION OF LIST WITH A NEW WRITE
+        - ie delete section of list (optional) + replace section with a write
+            - if section is merged together than this might involve a read in order to maintain the end of it. maybe we can avoid it
+        - OR have a full list (never delete), & have a seperate list of points in time to replace from. then you access both lists on read, 
+            - then there should really be no read-writes, not even updates
+
+
+> writes *are* ultimately based on reads, but the way they are determined is asynchronously by user interaction. 
+the user needs to be kept up to date with the latest state, then he can do writes. writes that conflict with other user's writes will be merged with best-guess logic. 
+
+we are just responsible for consistent ordering of write actions (& their storage, and maybe some auth). we hear a write-action we add it to the end of the list. the client (end user's device) is the one actually doing the resolving logic to combine those write actions into state (because everything has to be e2ee and idk how to do FHE).
+    the client can implement strong-consistency type logic if they want, ie encode into a transaction what state it depends on and fail the transaction if the state is not what it was from the writers perspective when it was sent
+    or the client can do lenient / inference / "weakly typed" merges of the transactions (actions) to infer what they meant

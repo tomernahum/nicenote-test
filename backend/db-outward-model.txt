@@ -1,0 +1,35 @@
+
+DOCUMENTS:
+    - self contained units of state
+    - the encryption boundary + the fetching boundary
+         (this version of system does not support ORAM-like stuff across documents. within document you have to just fetch everything)
+    - actually just append-only lists of actions, the actual state is constructed deterministically out of the list of actions by the client
+        - see actions
+    - what a doc looks like to the server 
+        - list of actions
+        - maybe: other stuff
+        
+still deciding if doc-action is 1-many or if the same action can apply to multiple docs, or be bound to another action from another doc. for now I am writing the latter, in order to explore it.
+
+ACTIONS
+    - associated with 1 or more documents
+    - each document:action pair is associated with an action resolver known by the client, used to construct the document output state
+    - what an action looks like to the server: 
+        - ENCRYPTEDGOBLEDYGOOK (see what it looks like to client)
+        - docsItAppliesTo[]
+        - maybe: something that verifies the permission of the sender to make that action on those particular documents
+            - either signed with senders identity, which is listed as write-permission-ed in each doc
+            - or signed with a doc key
+            - or can let client verify it? and the real identity proof was knowing the docID along the way?
+    - what the server does with the action:
+        - copies it into the history of each relevant document, in a transactional way
+    - what an action looks like to the client:
+        - docsItBelongsTo[] (hears about it once for each doc)
+        
+        - actionName
+        - actionParams
+        - actionSender (proven to client)
+            - probably as a fact so it's easier to implement no-lying
+    - action corresponds to an action resolver on the client (defined in the client code)
+        func actionResolver(actionName, actionParams:expectedTypeBasedOnAction, actionSender)
+            may be exposed as a list of actionNameResolver functions, but ygtp

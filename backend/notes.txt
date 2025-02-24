@@ -2,10 +2,13 @@
 Either
 - 1 sqlite database per document
     - this makes eventual scaling (plus bonus edge serving) easily
-    - this makes implementing transactions w/ multiple documents hard (bad)
+    - this makes implementing acid transactions w/ multiple documents hard (bad)
+        - but within same easier as we can do stuff like lock the whole db which sqlite does
 - 1 database for all data
     - can then shard later?
     - point where this becomes slow is probably far in the future tbh
 
-    - there are multiple auto-horizontal-scaling dbs that claim to still have acid transactions. for example cockroachdb for sql-compatibility, or mongodb
+    - there are multiple auto-horizontal-scaling dbs that claim to still have acid transactions. for example cockroachdb, spanner for sql-compatibility, or mongodb
         - for our desired app a little latency is potentially ok as users will have an offline copy...?
+    
+    it can't be that simple?
