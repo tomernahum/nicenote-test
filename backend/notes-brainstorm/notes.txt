@@ -22,8 +22,30 @@ we also need realtime push-based notifs though!
 How to implement realtime:
     1. go through the db
     2. go through a specialized centralized db or broker thats more faster
+        I have found out that socket.io has adapters for redis, and other offerings
+        also I think what we want is pub/sub
     3. have server send down the realtime before writing
         what if it fails/changes in the db?
             then I guess we treat realtime state as likely-true not canonical and refetch straight from the db periodically?
         can we guarantee ACID ourselves?, what if we start with a single node (not distributed) 
         i need to learn the node concurrency model
+            ok it seems that for node there is one thread, and it uses event-loop similar to frontend js to switch between what synchronous work it's doing, while it waits for async work like those in promises
+
+if you could only do an action on one room/doc, it would be a lot easier to scale as we can just split/shard everything by room (the websocket server and the data store). But I want to be able to send arbitrary actions that apply to an arbitrary combo of rooms
+so we will start by using a monolith server, then scale out the socket server seperately using reccomended methods from them, and scale out the peristant db seperately onto its own server too using methods from them (like maybe we will use cockroachdb). hopefully that will be good enough and we won't mess up the acid too bad
+    https://socket.io/docs/v4/using-multiple-nodes/#passing-events-between-nodes
+    https://ably.com/topic/scaling-socketio?utm_source=chatgpt.com
+
+----
+Scheme
+1 monolithic backend. may have parallelism or not idk
+receiveAction:
+    1) notify all connected clients of it
+    2) attempt to write it in db
+    3) i feel it should always succeed... but 
+       if it doesn't, notify connected clients to rollback that action
+    3) if it does, notify clients that it has been confirmed?
+
+if all relevant connected clients are connected to the same server, we should be able to do it easy 
+
+
