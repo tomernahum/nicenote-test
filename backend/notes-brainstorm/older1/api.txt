@@ -1,0 +1,54 @@
+
+
+Model:
+each doc is an append only array of actions
+a range of actions can be compressed into one action. 
+
+Functions for one single doc:
+---
+1) Get latest state of doc, as minimized as possible
+2) Get actions in doc since a given action (not minimized)
+    unminimized version may be thrown out past a certain date. in that case can note the error and return minimized version instead (1)
+--
+3) Do an action
+    needs to check that sender has permission to do so
+4) Submit compression of actions up to a given action, ask a client to do so
+    - can ask multiple clients to compress up to the same amount, to corroborate they give the same result
+5) Rotate Key / reencrypt doc with new key
+    How to do this for the users? If they were all 
+
+-----
+
+Crypto Service:
+1) each user will own a set of secret keys. they will be encrypted on the server with one master key (likely derived from password). clients will get them as needed, and decrypt with the master key which they will have saved. this offloads the key management problem to the master key. each document will have its own read and write keys
+2) Master key management
+    1) derive from password, ask for password every time user logs in
+        -) unloggedin users (important usecase, but maybe only for documents with "share by secret url" enabled): store the master key client side for if they come back later  OR  don't, encode all important keys in the URL
+3) Key sharing - user sending keys to another user
+    will handle out of band to start with.
+    user story: I want to add someone to a doc.
+        for now: I need to send them a secret doc Join link (can expire after one join) - this will share with them the doc keys
+        in the future: I will add them by username. the app will securely convert username to public key, then encrypt the right keys with public key and send to the user
+
+
+Important things to think about more:
+Revocations of doc permissions
+    base case: delete the doc and recreate it, then reshare new keys to people who are not revoked.
+        base case: manually share again out of band
+>>        better: have ability to share new doc keys to only a subset of users currently on doc
+/ Rotating keys of a doc, in case of a key being compromised
+
+User loses master key
+user's master key is compromised
+look into how FS & PCS automatic regular key rotation is done
+
+idea: multiple encryption/decryption keys that work interopera
+
+
+
+
+--- 
+createKeyObfuscation(timeout, secretKey, keytoEncryptWith)-  (client side)
+
+
+
