@@ -12,3 +12,18 @@ Either
         - for our desired app a little latency is potentially ok as users will have an offline copy...?
     
     it can't be that simple?
+
+-----
+ok 1 db for all data so it can do acidity for us
+
+our server is just wrapping GET and INSERT of the db
+we also need realtime push-based notifs though!
+
+How to implement realtime:
+    1. go through the db
+    2. go through a specialized centralized db or broker thats more faster
+    3. have server send down the realtime before writing
+        what if it fails/changes in the db?
+            then I guess we treat realtime state as likely-true not canonical and refetch straight from the db periodically?
+        can we guarantee ACID ourselves?, what if we start with a single node (not distributed) 
+        i need to learn the node concurrency model
