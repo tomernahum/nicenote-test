@@ -47,5 +47,8 @@ receiveAction:
     3) if it does, notify clients that it has been confirmed?
 
 if all relevant connected clients are connected to the same server, we should be able to do it easy 
-
+---
+theres lots of database concepts i still need to learn like SI vs serializabiliy, tect
+---
+just saw a sponsorship for convex, they seem to have a similar thing built (realtime)
 

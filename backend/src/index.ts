@@ -23,7 +23,7 @@ app.use('*', cors())
 
 //
 
-
+//https://hono.dev/docs/guides/rpc
 app.get('/', (c) => {
     return c.text('Hello Hono!')
 })    
@@ -31,4 +31,6 @@ app.get('/', (c) => {
 io.on("connection", (socket) => {
     // ...
     socket.emit("testEvent", "Hello!")
+
+    
 });
