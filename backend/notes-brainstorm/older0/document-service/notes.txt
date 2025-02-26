@@ -1,0 +1,7 @@
+
+subscribe function:
+- websockets
+
+--
+so can be literally same as chat.ttools but with squashing and strong guarantees of past history
+
