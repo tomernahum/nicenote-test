@@ -1,1 +1,20 @@
 so client api actions will need to be squashed into one action that can run every X milliseconds. easiest way is just to list all the client actions. that action will need to be of arbitrary length (client action would likely need that anyway), we will set a minimum pad and then pad increments. server will be able to infer if you pasted a lot of data since the action will be big.
+
+
+
+We build event sourcing database + squashes for efficiency
+we want realtime updates on events plus strong consistency within a doc, ideally between docs
+solutions to this:
+- db + message brokering pub/sub websockets (or built in like listen/notify)
+- convex baas
+- kurrent eventstoredb
+- other event sourcing databses or libraries on top of dbs
+- realtime libraries or features on top of dbs, easy enough to make an event list
+
+message libraries (all similar but slightly different)
+- kafka
+- rabbitmq and alternatives
+- kurrent
+
+
+I know I am dilly dallying to much before prototyping more
