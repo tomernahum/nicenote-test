@@ -1,0 +1,1 @@
+so client api actions will need to be squashed into one action that can run every X milliseconds. easiest way is just to list all the client actions. that action will need to be of arbitrary length (client action would likely need that anyway), we will set a minimum pad and then pad increments. server will be able to infer if you pasted a lot of data since the action will be big.
