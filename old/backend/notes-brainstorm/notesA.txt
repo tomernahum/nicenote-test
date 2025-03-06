@@ -14,7 +14,9 @@ solutions to this:
 message libraries (all similar but slightly different)
 - kafka
 - rabbitmq and alternatives
+
 - kurrent
+- columnar / time series? databases
 
 
 I know I am dilly dallying to much before prototyping more
