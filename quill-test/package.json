@@ -1,5 +1,5 @@
 {
-  "name": "client",
+  "name": "quill-test",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,5 +11,13 @@
   "devDependencies": {
     "typescript": "~5.7.2",
     "vite": "^6.2.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "dependencies": {
+    "quill": "^2.0.3"
   }
 }
