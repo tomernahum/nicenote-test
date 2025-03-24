@@ -184,6 +184,9 @@ export function setupEditors() {
             <button id="editor1Sync">
                 sync off
             </button>
+            <button id="editor1Rerender">
+                reload state 
+            </button>
             <br />
 
             <h3> Editor 2 </h3>
@@ -191,8 +194,29 @@ export function setupEditors() {
             <button id="editor2Sync">
                 sync off
             </button>
+            <button id="editor2Rerender">
+                reload state 
+            </button>
+
+            <h3> Canonical </h3>
+            <div id="canonical"> Hello </div>
         </div>
     `;
+    let syncEditor1 = true;
+    let syncEditor2 = true;
+    setupSyncButton("editor1", () => (syncEditor1 = !syncEditor1));
+    setupSyncButton("editor2", () => (syncEditor2 = !syncEditor2));
+    function setupSyncButton(editorId: string, toggle: () => void) {
+        const editorSyncButton = document.getElementById(`${editorId}Sync`)!;
+        editorSyncButton.addEventListener("click", () => {
+            const syncVar = toggle();
+            editorSyncButton.innerText = syncVar ? "sync on" : "sync off";
+        });
+        toggle();
+        const syncVar = toggle();
+        editorSyncButton.innerText = syncVar ? "sync on" : "sync off";
+    }
+
     const quill1 = new Quill("#editor1", {
         theme: "snow",
     });
@@ -200,6 +224,125 @@ export function setupEditors() {
         // theme: "bubble",
         theme: "snow",
     });
+
+    const LATENCY = 4000;
+    // const canonicalChangeList: Delta[] = [quill1.getContents()];
+    const canonicalChangeList = new SlowObservableList<Delta>({
+        latency: LATENCY,
+        initialItems: [quill1.getContents()],
+    });
+    canonicalChangeList.subscribe((canonicalChangeList) => {
+        const appliedChanges = canonicalChangeList.reduce((acc, change) => {
+            return acc.compose(change);
+        }, new Delta());
+
+        console.log(
+            "CANONICAL EVENT",
+            canonicalChangeList.length,
+            appliedChanges.ops
+        );
+    });
+
+    //
+
+    function handleQuillTextChange() {
+        quill1.on("text-change", async (changeDelta, oldStateDelta, source) => {
+            // console.log("text-change", changeDelta, source);
+            if (!syncEditor1) {
+                return;
+            }
+
+            // todo irl maybe: some batching
+
+            // notify the canonical list
+            canonicalChangeList.push(changeDelta);
+
+            // notify the other editors
+            // irl would be over server boundary, eg socket.broadcast
+            new Promise((resolve) => setTimeout(resolve, LATENCY)).then(() => {
+                quill2.updateContents(changeDelta, "silent");
+                // or testing smething
+                // const newContents = oldStateDelta.compose(changeDelta);
+                // mergeInNewContents(quill2, newContents);
+            });
+        });
+        quill2.on("text-change", async (changeDelta, oldStateDelta, source) => {
+            // console.log("text-change", changeDelta, source);
+            if (!syncEditor1) {
+                return;
+            }
+
+            // todo irl maybe: some batching
+
+            // notify the canonical list
+            canonicalChangeList.push(changeDelta);
+
+            // notify the other editors
+            // irl would be over server boundary
+            new Promise((resolve) => setTimeout(resolve, LATENCY)).then(() => {
+                quill1.updateContents(changeDelta, "silent");
+                // or testing smething
+                // const newContents = oldStateDelta.compose(changeDelta);
+                // mergeInNewContents(quill2, newContents);
+            });
+        });
+    }
+
+    handleQuillTextChange();
+
+    canonicalChangeList.subscribe((canonicalChangeList) => {
+        // const appliedChanges = canonicalChangeList.reduce((acc, change) => {
+        //     return acc.compose(change);
+        // }, new Delta());
+        // mergeInNewContents(quill1, appliedChanges);
+        // mergeInNewContents(quill2, appliedChanges);
+    });
+
+    function mergeInNewContents(quill: Quill, newContents: Delta) {
+        const oldContents = quill.getContents();
+
+        const diff = oldContents.diff(newContents);
+
+        quill.updateContents(diff, "silent");
+    }
+
+    const editor1RerenderButton = document.getElementById("editor1Rerender")!;
+    editor1RerenderButton.addEventListener("click", () => {
+        rerender(quill1);
+    });
+    const editor2RerenderButton = document.getElementById("editor2Rerender")!;
+    editor2RerenderButton.addEventListener("click", () => {
+        rerender(quill2);
+    });
+    // we can rerender every time the editor loses focus, if only all local changes are merged in already
+
+    function rerender(quill: Quill) {
+        const newContents = canonicalChangeList
+            .toArray()
+            .reduce((acc, change) => {
+                return acc.compose(change);
+            }, new Delta());
+        quill.setContents(newContents, "silent");
+    }
+
+    // canonical
+    const canonical = new Quill("#canonical", {
+        theme: "snow",
+        readOnly: true,
+    });
+    canonicalChangeList.subscribe((canonicalChangeList) => {
+        const appliedChanges = canonicalChangeList.reduce((acc, change) => {
+            return acc.compose(change);
+        }, new Delta());
+        canonical.setContents(appliedChanges, "silent");
+    });
+
+    /*
+        so now here we are broadcasting to all but selves, and also broadcasting to canonical listener
+        it would be good if editors naturally stayed in sync but they don't. maybe a crdt library would?? then I got to bring my own dom <-> state sync
+
+        or could do crdt <--> quill (<--> dom)
+    */
 }
 
 async function waitRandom() {
@@ -209,4 +352,62 @@ async function waitRandom() {
 }
 function getRandomInt(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+type Subscriber<T> = (value: T) => void;
+class SlowObservableList<T> {
+    private items: T[] = [];
+    private subscribers: Subscriber<T[]>[] = [];
+
+    private latency = 0;
+
+    constructor({
+        latency = 0,
+        initialItems = [],
+    }: { latency?: number; initialItems?: T[] } = {}) {
+        this.latency = latency;
+        this.items = initialItems;
+    }
+
+    subscribe(callback: Subscriber<T[]>) {
+        this.subscribers.push(callback);
+        callback(this.items); // Initial call with current state
+        return () => {
+            // Return unsubscribe function
+            this.subscribers = this.subscribers.filter((cb) => cb !== callback);
+        };
+    }
+
+    private notifySubscribers() {
+        this.subscribers.forEach((callback) => callback(this.items));
+    }
+
+    async push(...items: T[]) {
+        await new Promise((resolve) => setTimeout(resolve, this.latency));
+        this.items.push(...items);
+        this.notifySubscribers();
+    }
+
+    pop(): T | undefined {
+        const item = this.items.pop();
+        this.notifySubscribers();
+        return item;
+    }
+
+    clear() {
+        this.items = [];
+        this.notifySubscribers();
+    }
+
+    get length(): number {
+        return this.items.length;
+    }
+
+    get(index: number): T | undefined {
+        return this.items[index];
+    }
+
+    toArray(): T[] {
+        return [...this.items];
+    }
 }
