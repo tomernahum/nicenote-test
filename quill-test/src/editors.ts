@@ -339,9 +339,18 @@ export function setupEditors() {
 
     /*
         so now here we are broadcasting to all but selves, and also broadcasting to canonical listener
-        it would be good if editors naturally stayed in sync but they don't. maybe a crdt library would?? then I got to bring my own dom <-> state sync
+        it would be good if editors naturally stayed in sync but they don't very well. maybe a crdt library would?? then I got to bring my own dom <-> state sync
 
-        or could do crdt <--> quill (<--> dom)
+        or could do crdt <--> quill (<--> dom)   in fact bindings like these exist already
+
+        creating event   : (user edits and api edits) --> quill delta --> yjs transformation -> encrypted transformation
+        from another user: encrypted -> yjs -> quill delta -> dom
+        not just one to one events. the yjs system tells us when a new event happens, then we translate that into a quill delta (differently for each client), yjs is consistent one, and that shows it for us...
+
+
+        my original idea was to have
+        canonical state + optimistic actions at the end. when optimisticAction is confirmed it's good
+
     */
 }
 
