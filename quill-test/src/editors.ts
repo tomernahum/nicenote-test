@@ -175,7 +175,7 @@ export function setupEditors1() {
     });
 }
 
-export function setupEditors() {
+export function setupEditors2() {
     const wrapper = document.getElementById("editors")!;
     wrapper.innerHTML = `
         <div>
@@ -354,6 +354,139 @@ export function setupEditors() {
     */
 }
 
+export function setupEditors() {
+    const wrapper = document.getElementById("editors")!;
+    wrapper.innerHTML = `
+        <div>
+            todo latency slider
+
+            <h3> Editor 1 </h3>
+            <div id="editor1"> Hello </div>
+            <button id="editor1Rerender">
+                reload state 
+            </button>
+            <br />
+
+            <h3> Editor 2 </h3>
+            <div id="editor2"> Hello </div>
+            <button id="editor2Rerender">
+                reload state 
+            </button>
+
+            <h3> Canonical </h3>
+            <div id="canonical"> Hello </div>
+        </div>
+    `;
+
+    const quill1 = new Quill("#editor1", {
+        theme: "snow",
+    });
+    const quill2 = new Quill("#editor2", {
+        // theme: "bubble",
+        theme: "snow",
+    });
+
+    const LATENCY = 4000;
+    // const canonicalChangeList: Delta[] = [quill1.getContents()];
+    type Id = string;
+    const canonicalChangeList = new SlowObservableList<[Id, Delta]>({
+        latency: LATENCY,
+        initialItems: [[crypto.randomUUID(), quill1.getContents()]],
+    });
+
+    ///
+    function convertToOneDelta(
+        idDeltaList: [Id, Delta][],
+        initialState = new Delta()
+    ): Delta {
+        return idDeltaList
+            .map(([_, change]) => change)
+            .reduce((acc, change) => {
+                return acc.compose(change);
+            }, initialState || new Delta());
+    }
+    function mergeInNewContents(quill: Quill, newContents: Delta) {
+        const oldContents = quill.getContents();
+
+        const diff = oldContents.diff(newContents);
+
+        quill.updateContents(diff, "silent");
+    }
+    // canonical
+    const canonical = new Quill("#canonical", {
+        theme: "snow",
+        readOnly: true,
+    });
+    canonicalChangeList.subscribe((canonicalChangeList) => {
+        const appliedChanges = convertToOneDelta(canonicalChangeList);
+        console.log(
+            "CANONICAL EVENT",
+            canonicalChangeList.length,
+            appliedChanges.ops
+        );
+        canonical.setContents(appliedChanges, "silent");
+    });
+    ///
+    const optimisticChangeListEditor1 = new SlowObservableList<[Id, Delta]>({
+        latency: 0,
+        initialItems: [],
+    });
+    const optimisticChangeListEditor2 = new SlowObservableList<[Id, Delta]>({
+        latency: 0,
+        initialItems: [],
+    });
+
+    quill1.on("text-change", async (changeDelta, oldStateDelta, source) => {
+        // add it to our system
+        const id = crypto.randomUUID();
+        optimisticChangeListEditor1.push([id, changeDelta]);
+        canonicalChangeList.push([id, changeDelta]);
+    });
+    quill2.on("text-change", async (changeDelta, oldStateDelta, source) => {
+        // add it to our system
+        const id = crypto.randomUUID();
+        optimisticChangeListEditor2.push([id, changeDelta]);
+        canonicalChangeList.push([id, changeDelta]);
+    });
+
+    // on change in canonical list:
+    // either apply the new one to us
+    // if it comes from us, still apply it but remove it from our optimistic changes list
+    // then rerender us
+    canonicalChangeList.subscribeItem((newItem, fullList) => {
+        // remove the corresponding optimistic change if it exists
+        optimisticChangeListEditor1.filter(([id, change]) => {
+            return newItem[0] === id;
+        });
+        optimisticChangeListEditor2.filter(([id, change]) => {
+            return newItem[0] === id;
+        });
+
+        // rerender the editor with the new canon state
+        const canonicalState = convertToOneDelta(fullList);
+
+        const optimisticState1 = convertToOneDelta(
+            optimisticChangeListEditor1.toArray(),
+            canonicalState // start with canonical state
+        );
+        const optimisticState2 = convertToOneDelta(
+            optimisticChangeListEditor2.toArray(),
+            canonicalState // start with canonical state
+        );
+
+        mergeInNewContents(quill1, optimisticState1);
+        mergeInNewContents(quill2, optimisticState2);
+    });
+    setInterval(() => {
+        console.log("RERENDERING");
+        const canonicalState = convertToOneDelta(canonicalChangeList.toArray());
+        mergeInNewContents(quill1, canonicalState);
+        canonical.setContents(canonicalState, "silent");
+    }, 1000);
+
+    // doesn't quite work yet idk why
+}
+
 async function waitRandom() {
     return await new Promise((resolve) =>
         setTimeout(resolve, Math.random() * 1000)
@@ -363,11 +496,14 @@ function getRandomInt(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-type Subscriber<T> = (value: T) => void;
 class SlowObservableList<T> {
-    private items: T[] = [];
-    private subscribers: Subscriber<T[]>[] = [];
+    // Callback type for full state updates of the list.
+    private subscribers: ((state: T[]) => void)[] = [];
+    // Callback type for notifications on each new item added.
+    // The callback receives the new item, along with the full state of the list.
+    private itemSubscribers: ((newItem: T, fullState: T[]) => void)[] = [];
 
+    private items: T[] = [];
     private latency = 0;
 
     constructor({
@@ -378,12 +514,24 @@ class SlowObservableList<T> {
         this.items = initialItems;
     }
 
-    subscribe(callback: Subscriber<T[]>) {
+    // Subscribe to full list updates.
+    subscribe(callback: (state: T[]) => void) {
         this.subscribers.push(callback);
         callback(this.items); // Initial call with current state
         return () => {
-            // Return unsubscribe function
+            // Unsubscribe function.
             this.subscribers = this.subscribers.filter((cb) => cb !== callback);
+        };
+    }
+
+    // Subscribe to notifications for each new item added.
+    // The callback gets the new item and the full state of the list.
+    subscribeItem(callback: (newItem: T, fullState: T[]) => void) {
+        this.itemSubscribers.push(callback);
+        return () => {
+            this.itemSubscribers = this.itemSubscribers.filter(
+                (cb) => cb !== callback
+            );
         };
     }
 
@@ -391,16 +539,37 @@ class SlowObservableList<T> {
         this.subscribers.forEach((callback) => callback(this.items));
     }
 
-    async push(...items: T[]) {
+    async push(...newItems: T[]) {
         await new Promise((resolve) => setTimeout(resolve, this.latency));
-        this.items.push(...items);
+        this.items.push(...newItems);
         this.notifySubscribers();
+        // Notify each new item subscriber separately for every new item added.
+        newItems.forEach((item) => {
+            this.itemSubscribers.forEach((callback) =>
+                callback(item, this.items)
+            );
+        });
     }
 
     pop(): T | undefined {
         const item = this.items.pop();
         this.notifySubscribers();
         return item;
+    }
+
+    filter(filterFn: (item: T) => boolean): T[] {
+        const removedItems: T[] = [];
+        this.items = this.items.filter((item) => {
+            if (filterFn(item)) {
+                removedItems.push(item);
+                return false;
+            }
+            return true;
+        });
+        if (removedItems.length > 0) {
+            this.notifySubscribers();
+        }
+        return removedItems;
     }
 
     clear() {
