@@ -56,7 +56,7 @@ export function setupEditors() {
         console.log(
             "CANONICAL EVENT",
             canonicalChangeList.length,
-            appliedChanges.ops
+            deltaToString(appliedChanges)
         );
         canonical.setContents(appliedChanges, "silent");
     });
@@ -88,6 +88,9 @@ export function setupEditors() {
     // if it comes from us, still apply it but remove it from our optimistic changes list
     // then rerender us
     canonicalChangeList.subscribeItem((newItem, fullList) => {
+        const cursorIsAtEndToStart =
+            quill1.getSelection()?.index === quill1.getLength() - 1;
+
         // remove the corresponding optimistic change if it exists
         optimisticChangeListEditor1.filter(([id, change]) => {
             return newItem[0] === id;
@@ -114,15 +117,20 @@ export function setupEditors() {
         const cursorIsAtEnd =
             quill1.getSelection()?.index === quill1.getLength() - 1;
         const cursorIsNull = quill1.getSelection()?.index === null;
-        if (!cursorIsAtEnd && !cursorIsNull) {
+        if (cursorIsAtEndToStart && !cursorIsAtEnd && !cursorIsNull) {
             console.warn(
                 "cursor is not at end after merge due to canonical state change!",
                 {
                     diffApplied: x1.ops,
                     canonicalState: canonicalState.ops,
-                    optimisticState1: optimisticState1.ops,
+                    optimisticState: optimisticState1.ops,
+                    fullOptimisticState: optimisticChangeListEditor1.toArray(),
+                    fullOptimisticStateCleaner: optimisticChangeListEditor1
+                        .toArray()
+                        .map(([_, change]) => deltaToString(change)),
                 }
             );
+            alert("!");
         }
     });
     setInterval(() => {
@@ -150,6 +158,14 @@ export function setupEditors() {
     // doesn't quite work yet idk why
 }
 
+function deltaToString(delta: Delta) {
+    const ops = delta.ops;
+    let thing;
+    if (ops.length === 1) {
+        thing = ops[0];
+    }
+    return JSON.stringify(thing);
+}
 //
 
 type Id = string;
