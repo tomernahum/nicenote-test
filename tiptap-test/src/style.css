@@ -13,7 +13,25 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* a {
+
+.tiptap h1 {
+  background-color: #9e3a00;
+}
+
+.tiptap {
+  border: 1px solid #ccc;
+  padding: 1rem;
+  min-height: 150px;
+  max-width: 600px;
+  margin-bottom: 1rem;
+}
+
+
+
+
+
+/* 
+a {
   font-weight: 500;
   color: #646cff;
   text-decoration: inherit;
