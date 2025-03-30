@@ -1,5 +1,5 @@
 import * as Y from "yjs"
-import { createRemoteDocProvider } from "./local-provider"
+import { createRemoteDocProvider } from "../local-provider"
 
 const doc1 = new Y.Doc()
 const doc2 = new Y.Doc()

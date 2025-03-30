@@ -1,6 +1,7 @@
 import * as Y from "yjs"
 
-function createLocalProvider(
+/** Creates a generic provider */
+export function createProvider(
     ydoc: Y.Doc,
     onBroadcastAttempt: (update: Uint8Array) => void
 ) {
@@ -12,10 +13,10 @@ function createLocalProvider(
         if (origin === providerId) {
             return
         }
+        // now this update was produced either locally or by another provider.
 
-        // this update was produced either locally or by another provider.
         onBroadcastAttempt(update)
-        console.log("update", update)
+        console.log("update!")
     })
 
     function onRemoteUpdateReceived(update: Uint8Array) {
@@ -25,16 +26,18 @@ function createLocalProvider(
     return {
         applyRemoteUpdate: onRemoteUpdateReceived,
     }
+
+    // TODO: what about initialization?
 }
 
-export function createRealProvider(ydoc: Y.Doc) {
+export function createRealProviderEx(ydoc: Y.Doc) {
     // YDoc will be updated by the main application (locally)
     // when that happens, the local provider will detect it and trigger onDocUpdate
     // we might also receive updates from other users / the server.
     // when that happens we will apply them to the local doc with localProvider.applyRemoteUpdate
     //
 
-    const localProvider = createLocalProvider(ydoc, onDocUpdate)
+    const localProvider = createProvider(ydoc, onDocUpdate)
 
     const config = {}
 
