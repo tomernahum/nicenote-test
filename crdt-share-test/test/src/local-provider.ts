@@ -70,6 +70,30 @@ export async function createRemoteDocProvider(
         console.log("broadcasting update", update)
         remoteDocUpdates.push(update)
     }
+
+    // Squash confirmed updates into a single smaller update
+    // didn't test this extensively, since this whole file is just a proof of concept
+    function doSquash() {
+        const lastSeenDocUpdates = remoteDocUpdates.toArray()
+
+        const onlineDoc = new Y.Doc()
+        lastSeenDocUpdates.forEach((update) => {
+            Y.applyUpdate(onlineDoc, update)
+        })
+        const squashedOnlineDocUpdate = Y.encodeStateAsUpdate(onlineDoc)
+
+        // on the "server" replace the last seen updates with the squashed update, don't replace any updates that happened after/while this function ran
+        // if someone else is also squashing updates, right now it maybe breaks but in the real world with a real server it will just reject the 2nd one or use a more complex strategy
+        remoteDocUpdates.splice(
+            0,
+            lastSeenDocUpdates.length,
+            squashedOnlineDocUpdate
+        )
+    }
+
+    return {
+        doSquash,
+    }
 }
 
-async function exampleUsage() {}
+// Missing: squash/snapshot

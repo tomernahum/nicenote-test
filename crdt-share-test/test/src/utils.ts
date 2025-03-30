@@ -1,3 +1,4 @@
+// slow to write only, not to read. may have been an oversight
 export class SlowObservableList<T> {
     private subscribers: ((state: T[]) => void)[] = []
     private itemSubscribers: ((newItem: T, fullState: T[]) => void)[] = []
@@ -56,7 +57,8 @@ export class SlowObservableList<T> {
         return item
     }
 
-    remove(filterFn: (item: T) => boolean): T[] {
+    async remove(filterFn: (item: T) => boolean): Promise<T[]> {
+        await new Promise((resolve) => setTimeout(resolve, this.latency))
         const removedItems: T[] = []
         this.items = this.items.filter((item) => {
             if (filterFn(item)) {
@@ -71,7 +73,8 @@ export class SlowObservableList<T> {
         return removedItems
     }
 
-    clear() {
+    async clear() {
+        await new Promise((resolve) => setTimeout(resolve, this.latency))
         this.items = []
         this.notifySubscribers()
     }
@@ -86,5 +89,28 @@ export class SlowObservableList<T> {
 
     toArray(): T[] {
         return [...this.items]
+    }
+
+    async splice(
+        start: number,
+        deleteCount: number = 0,
+        ...itemsToAdd: T[]
+    ): Promise<T[]> {
+        await new Promise((resolve) => setTimeout(resolve, this.latency))
+        const deletedItems = this.items.splice(
+            start,
+            deleteCount,
+            ...itemsToAdd
+        )
+        this.notifySubscribers()
+        // Notify each new item subscriber separately for every new item added
+        if (itemsToAdd.length > 0) {
+            itemsToAdd.forEach((item) => {
+                this.itemSubscribers.forEach((callback) =>
+                    callback(item, this.items)
+                )
+            })
+        }
+        return deletedItems
     }
 }

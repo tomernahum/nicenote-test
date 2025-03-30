@@ -6,23 +6,21 @@ const doc2 = new Y.Doc()
 const doc3 = new Y.Doc()
 doc3.getText("text").insert(0, "(Im existing innit)")
 
-await createRemoteDocProvider(doc1, {
+const provider1 = await createRemoteDocProvider(doc1, {
     remoteDocId: "myDoc",
     mergeInitialState: false,
 })
-await createRemoteDocProvider(doc2, {
-    // ydoc: doc2,
+const provider2 = await createRemoteDocProvider(doc2, {
     remoteDocId: "myDoc",
     mergeInitialState: true,
 })
-await createRemoteDocProvider(doc3, {
-    // ydoc: doc3,
+const provider3 = await createRemoteDocProvider(doc3, {
     remoteDocId: "myDoc",
     mergeInitialState: true,
 })
 
 const unrelatedDoc1 = new Y.Doc()
-await createRemoteDocProvider(unrelatedDoc1, {
+const provider4 = await createRemoteDocProvider(unrelatedDoc1, {
     remoteDocId: "unrelatedDoc",
     mergeInitialState: false,
 })
@@ -50,7 +48,7 @@ async function logDocsTwiceWithWait() {
 }
 
 doc1.on("update", () => {
-    console.log("doc1 update")
+    // console.log("doc1 update")
 })
 
 logDocs()
@@ -92,3 +90,24 @@ doc1.getText("text").delete(0, 5)
 doc2.getText("text").delete(0, 5)
 doc3.getText("text").delete(0, 2)
 await logDocsTwiceWithWait() // Hello    // these are deduped. ok good
+
+console.log("----Squash Test----")
+
+provider1.doSquash()
+doc1.getText("text").insert(0, "A")
+doc2.getText("text").insert(2, "B")
+
+await logDocsTwiceWithWait()
+
+doc1.getText("text").insert(0, "1")
+doc1.getText("text").insert(0, "(1)")
+doc2.getText("text").insert(0, "2")
+doc3.getText("text").insert(0, "3")
+doc3.getText("text").insert(0, "(333)")
+
+console.log("--- Dangerous Squash Test ---")
+
+provider1.doSquash()
+provider2.doSquash()
+
+await logDocsTwiceWithWait()
