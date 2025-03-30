@@ -48,14 +48,23 @@ function createQuillEditor(elementSelector: string) {
     })
     return quillEditor
 }
+let updatesCount = 0
 function createEditor(elementSelector: string, remoteDocId: string) {
     const yDoc = new Y.Doc()
     const yType = yDoc.getText("quill")
 
+    // using our local-provider provider
     const yBindingProvider = createRemoteDocProvider(yDoc, {
         remoteDocId,
         mergeInitialState: true,
     })
+
+    if (elementSelector === "#editor1" || false) {
+        yDoc.on("update", (update) => {
+            updatesCount++
+            console.log("updateCount", updatesCount)
+        })
+    }
 
     const quillEditor = createQuillEditor(elementSelector)
     const quillBinding = new QuillBinding(yType, quillEditor)

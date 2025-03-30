@@ -29,26 +29,8 @@ export function createProvider(
 
     // TODO: what about initialization?
 }
-
-export function createRealProviderEx(ydoc: Y.Doc) {
-    // YDoc will be updated by the main application (locally)
-    // when that happens, the local provider will detect it and trigger onDocUpdate
-    // we might also receive updates from other users / the server.
-    // when that happens we will apply them to the local doc with localProvider.applyRemoteUpdate
-    //
-
-    const localProvider = createProvider(ydoc, onDocUpdate)
-
-    const config = {}
-
-    function onDocUpdate(update: Uint8Array) {
-        // broadcast this to the server
-        return
-    }
-    function onRemoteServerUpdate(update: Uint8Array) {
-        localProvider.applyRemoteUpdate(update)
-    }
-    // subscribe to the server
-
-    return
-}
+// YDoc will be updated by the main application (locally)
+// when that happens, the  provider^^ will detect it and trigger onDocUpdate
+// we might also receive updates from other users / the server.
+// when that happens we will apply them to the local doc with localProvider.applyRemoteUpdate
+//
