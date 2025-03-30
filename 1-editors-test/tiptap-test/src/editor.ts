@@ -1,13 +1,12 @@
-import { Editor } from "@tiptap/core";
-import StarterKit from "@tiptap/starter-kit"; // contains a collection of extensions
-import BubbleMenu from "@tiptap/extension-bubble-menu";
+import { Editor } from "@tiptap/core"
+import StarterKit from "@tiptap/starter-kit" // contains a collection of extensions
+import BubbleMenu from "@tiptap/extension-bubble-menu"
 
-export function setupEditors(wrapperElement: HTMLElement) {
+export function setupEditor(wrapperElement: HTMLElement) {
     wrapperElement.innerHTML = `
         <div id="editor1" class="editor"></div>
-        <button id="editor1-button">Bold Selection</button>
-        <div id="editor2" class="editor"></div>
-    `;
+        <button id="editor1-bold-button">Bold Selection</button>
+    `
 
     const editor1 = new Editor({
         element: document.getElementById("editor1")!,
@@ -26,7 +25,7 @@ export function setupEditors(wrapperElement: HTMLElement) {
                 element: document.getElementById("editor1-bubble-menu")!,
                 shouldShow: ({ editor, view, state, oldState, from, to }) => {
                     // Only show the bubble menu when text is selected
-                    return editor.isActive("textStyle") || from !== to;
+                    return editor.isActive("textStyle") || from !== to
                 },
                 // Optional positioning function (you may adjust this)
                 tippyOptions: {
@@ -35,15 +34,21 @@ export function setupEditors(wrapperElement: HTMLElement) {
             }),
         ],
         content: "<p>Hello World</p>", // initial content
-    });
 
-    const doSomethingButton = document.getElementById("editor1-button")!;
-    doSomethingButton.addEventListener("click", () => {
-        // editor1.commands.setContent("<p>Do something</p>");
-        // editor1.chain().focus().toggleBold().run();
+        onTransaction({ editor }) {
+            console.log("transaction", editor)
+        },
+        onUpdate({ editor }) {
+            console.log("update", editor)
+        },
+    })
+
+    const boldButton = document.getElementById("editor1-bold-button")!
+    boldButton.addEventListener("click", () => {
+        editor1.chain().focus().toggleBold().run()
         // chain = multiple operations
         // focus = restore users dom focus and selection focus to the editor and last saved selection, optional but recommended for this kind of functionality
-    });
+    })
 }
 
 // Demo:

@@ -1,0 +1,20 @@
+TODO if we do a certain project structure
+
+Pick
+    - pick crdt: yjs, automerge, etc. 
+        use criteria of how hard it is to make custom e2ee binding for sharing, plus binding for an editor library
+    - pick an editor library: quill, prosemirror, lexical, roll your own
+        use criteria of how hard it is to customize to my desired UX (maybe WYSIWYG with markdown shortcuts, maybe blocks)
+Editor 
+    - bind the editor to the crdt. existing binding libraries may exist, or guides etc
+    - modify the editor for the desired UX (all these libraries have options to do so)
+Sync
+    - create an e2ee sync provider for the CRDT
+    - Basic Functions: (create), addChange, compress
+    - Permissions functions: share with user or secret-URL, unshare (will likely need key rotation), sharing tiers: read-only, read-write, admin(sharer)
+    - Crypto related functions: ...
+    Notes
+        - need to address problem of server being able to predict what the messages are by frequency (ie typing patterns)
+            - send messages only every X interval
+            - send empty messages when user is idle?
+

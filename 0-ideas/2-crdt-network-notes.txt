@@ -1,0 +1,19 @@
+
+Automerge Network Adapter is "supposed to be used as point to point communication channels."
+(seems bad to me)
+
+
+
+---
+CRDT Libraries
+- yjs
+- automerge
+- loro    - special: has ordered tree type
+- collabs -- need to look into
+- json joy
+
+
+
+Other local first libraries
+- legend-state
+- many others. can find many on lofi.so
