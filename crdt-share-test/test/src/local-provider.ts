@@ -17,6 +17,10 @@ async function getRemoteDoc(docId: string) {
     return remoteDocs.get(docId)!
 }
 
+export function setLatency(docId: string, latency: number) {
+    remoteDocs.get(docId)?.setLatency(latency)
+}
+
 /**
  * Bind a local yDoc to a remote shared doc
  * if mergeInitialState is true, the initial state of the local yDoc will be merged with the remote yDoc
@@ -25,7 +29,7 @@ export async function createRemoteDocProvider(
     yDoc: Y.Doc,
     params: {
         remoteDocId: string
-        mergeInitialState?: boolean // defaults to defaulting to false
+        mergeInitialState?: boolean // defaults to defaulting to false,
     }
 ) {
     // "connect to the server"
@@ -96,4 +100,4 @@ export async function createRemoteDocProvider(
     }
 }
 
-// Missing: squash/snapshot
+// Missing: awareness support (yjs awareness data structure used for ephemeral state)

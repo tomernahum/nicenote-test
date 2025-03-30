@@ -14,6 +14,10 @@ export class SlowObservableList<T> {
         this.items = initialItems
     }
 
+    setLatency(latency: number) {
+        this.latency = latency
+    }
+
     // Subscribe to full list updates.
     subscribe(callback: (state: T[]) => void) {
         this.subscribers.push(callback)
