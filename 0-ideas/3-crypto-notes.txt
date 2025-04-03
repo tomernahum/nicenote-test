@@ -1,0 +1,16 @@
+(this is not the only place I have notes on crypto located)
+
+
+we want to share documents, with these permissions:
+read, read/write, read/write/share           bonus: specific writes (eg add comment, don't modify other's comment.) -  (Too hard in current system within yjs/similar docs (maybe we could write each comment as separate docs))
+
+cool solution:
+instead of thinking about auth, just have secret keys (we need anyway for read permission)
+secret key for read, secret key for write
+minor problem: too easy to share your secret key for write with someone else, even if whoever gave you that key doesn't want you to. if we tied it to account somehow, then at least you would be forced to share all your secret keys / your whole account in order to share just one, plus it could be detected more easily...  (this is the model for traditional apps)
+    solution: somehow derive write secret key from account key + have the derived key expire quickly so you can't share it - or something similar
+    related solution: have every person's write key be unique to them, so it's clear who leaked a key
+
+I am going to try to copy my crypto model from someone else that I can find, and try to compare approaches others use. I think this approach is used by cryptpad? not sure
+
+ideally I would copy/look at the design of a project made by an cryptography expert, but I honestly don't know any necessarily. I guess big companies. Apple (Notes), proton drive, probably secure (i've heard good things about apple's crypto implementations, except for the client-side backdoors of default icloud backup and stuff like that)

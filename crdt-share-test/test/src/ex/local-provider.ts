@@ -1,7 +1,14 @@
 import * as Y from "yjs"
+// import * as YAwareness from "y-protocols/awareness.js"
+import {
+    Awareness,
+    applyAwarenessUpdate,
+    encodeAwarenessUpdate,
+    removeAwarenessStates,
+} from "y-protocols/awareness.js"
 
-import { SlowObservableList } from "./utils"
-import { createProvider } from "./provider"
+import { SlowObservableList } from "../utils"
+import { createProvider } from "../base-provider"
 
 type YUpdate = Uint8Array
 
@@ -17,8 +24,25 @@ async function getRemoteDoc(docId: string) {
     return remoteDocs.get(docId)!
 }
 
+// Awareness section (added on)
+const remoteAwarenessUpdates = new Map<string, SlowObservableList<YUpdate>>()
+function ensureRemoteAwarenessExists(docId: string) {
+    if (remoteAwarenessUpdates.has(docId)) {
+        return
+    }
+    remoteAwarenessUpdates.set(
+        docId,
+        new SlowObservableList<YUpdate>({ latency: 500 })
+    )
+}
+async function getRemoteAwarenessUpdates(docId: string) {
+    await ensureRemoteAwarenessExists(docId)
+    return remoteAwarenessUpdates.get(docId)!
+}
+
 export function setLatency(docId: string, latency: number) {
     remoteDocs.get(docId)?.setLatency(latency)
+    remoteAwarenessUpdates.get(docId)?.setLatency(latency)
 }
 
 /**
@@ -38,13 +62,12 @@ export async function createRemoteDocProvider(
     // connect to the yDoc
     const yDocProvider = createProvider(yDoc, broadcastUpdate)
 
-    // params.yDoc either has no existing state, has had some of the same updates as from the server, or has had unique updates
-    // if it has had unique updates, we need to merge them. for now we won't support it though
-
     // initialize the local yDoc with all the previous remote state & updates
     remoteDocUpdates.toArray().forEach((update) => {
         yDocProvider.applyRemoteUpdate(update)
     })
+
+    // params.yDoc either has no existing state, has had some of the same updates as from the server, or has had unique updates. if it has had unique updates, we need to merge them
     if (params.mergeInitialState) {
         // calculate the onlineDoc
         const onlineDoc = new Y.Doc()
@@ -95,8 +118,40 @@ export async function createRemoteDocProvider(
         )
     }
 
+    // Implement Awareness using yjs's awareness protocol https://docs.yjs.dev/api/about-awareness#adding-awareness-support-to-a-provider
+    // initialize awareness
+    const remoteAwarenessUpdates = await getRemoteAwarenessUpdates(
+        params.remoteDocId
+    )
+    const awareness = new Awareness(yDoc)
+    remoteAwarenessUpdates.toArray().forEach((update) => {
+        applyAwarenessUpdate(awareness, update, yDoc)
+    })
+
+    remoteAwarenessUpdates.subscribeItem((newItem, fullState) => {
+        applyAwarenessUpdate(awareness, newItem, yDoc)
+    })
+
+    // code from docs
+    // Whenever the local state changes, communicate that change to all connected clients
+    awareness.on("update", ({ added, updated, removed }) => {
+        console.log("awareness update in provider", { added, updated, removed })
+        const changedClients = added.concat(updated).concat(removed)
+        const update = encodeAwarenessUpdate(awareness, changedClients)
+        // broadcast to server
+        remoteAwarenessUpdates.push(update)
+    })
+    try {
+        window.addEventListener("beforeunload", () => {
+            removeAwarenessStates(awareness, [yDoc.clientID], "window unload")
+        })
+    } catch (e) {
+        console.warn(e)
+    }
+
     return {
         doSquash,
+        awareness,
     }
 }
 

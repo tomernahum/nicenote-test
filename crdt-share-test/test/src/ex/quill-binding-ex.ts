@@ -5,9 +5,13 @@ import Quill, { Delta, Range } from "quill"
 import { QuillBinding } from "y-quill"
 import QuillCursors from "quill-cursors"
 import * as Y from "yjs"
+import { WebsocketProvider } from "y-websocket"
 
 import "quill/dist/quill.snow.css"
-import { createRemoteDocProvider, setLatency } from "../local-provider"
+// import { createRemoteDocProvider, setLatency } from "./local-provider"
+import { createRemoteDocProvider } from "../remote-provider"
+import { setLatency } from "../mock-server-interface"
+import { getRandomAnimal, getRandomColor } from "../utils"
 
 Quill.register("modules/cursors", QuillCursors)
 
@@ -37,11 +41,19 @@ function createQuillEditor(elementSelector: string) {
     const quillEditor = new Quill(elementSelector, {
         modules: {
             cursors: true,
+            // cursors: {
+            //     transformOnTextChange: true,
+            // },
             toolbar: [
                 [{ header: [1, 2, false] }],
                 ["bold", "italic", "underline"],
                 ["image", "code-block"],
             ],
+            history: {
+                // Local undo shouldn't undo changes
+                // from remote users
+                userOnly: true,
+            },
         },
         placeholder: "Start collaborating...",
         theme: "snow", // or 'bubble'
@@ -49,12 +61,12 @@ function createQuillEditor(elementSelector: string) {
     return quillEditor
 }
 let updatesCount = 0
-function createEditor(elementSelector: string, remoteDocId: string) {
+async function createEditor(elementSelector: string, remoteDocId: string) {
     const yDoc = new Y.Doc()
     const yType = yDoc.getText("quill")
 
     // using our local-provider provider
-    const yBindingProvider = createRemoteDocProvider(yDoc, {
+    const yBindingProvider = await createRemoteDocProvider(yDoc, {
         remoteDocId,
         mergeInitialState: true,
     })
@@ -66,13 +78,18 @@ function createEditor(elementSelector: string, remoteDocId: string) {
         })
     }
 
+    // Specify awareness information for local user to integrate with quill-cursors
+    yBindingProvider.awareness.setLocalStateField("user", {
+        name: `anonymous ${getRandomAnimal()}`,
+        color: getRandomColor(),
+    })
+
     const quillEditor = createQuillEditor(elementSelector)
-    const quillBinding = new QuillBinding(yType, quillEditor)
-    //Optionally specify an Awareness instance, if supported by the Provider (not supported by my local-provider)
-    // provider1.awareness.setLocalStateField('user', {
-    //   name: 'Typing Jimmy',
-    //   color: 'blue'
-    // })
+    const quillBinding = new QuillBinding(
+        yType,
+        quillEditor,
+        yBindingProvider.awareness
+    )
 
     return { yDoc, yType, quillEditor, quillBinding, yBindingProvider }
 }
