@@ -119,6 +119,105 @@ export class SlowObservableList<T> {
     }
 }
 
+export class ObservableList<T> {
+    private subscribers: ((state: T[]) => void)[] = []
+    private itemSubscribers: ((newItem: T, fullState: T[]) => void)[] = []
+
+    private items: T[] = []
+
+    constructor(initialItems: T[] = []) {
+        this.items = [...initialItems]
+    }
+
+    subscribe(callback: (state: T[]) => void, initialCall = true) {
+        this.subscribers.push(callback)
+        if (initialCall) {
+            callback(this.items)
+        }
+        return () => {
+            this.subscribers = this.subscribers.filter(
+                (sub) => sub !== callback
+            )
+        }
+    }
+
+    itemSubscribe(
+        callback: (newItem: T, fullState: T[]) => void,
+        initialCall = false
+    ) {
+        this.itemSubscribers.push(callback)
+        if (initialCall) {
+            this.items.forEach((item) => {
+                callback(item, this.items)
+            })
+        }
+        return () => {
+            this.itemSubscribers = this.itemSubscribers.filter(
+                (sub) => sub !== callback
+            )
+        }
+    }
+
+    private notifyFullStateSubscribers() {
+        this.subscribers.forEach((callback) => callback(this.items))
+    }
+
+    private notifyItemSubscribersOfLatestItem() {
+        this.itemSubscribers.forEach((callback) =>
+            callback(this.items[0], this.items)
+        )
+    }
+    private notifyItemSubscribersOfSpecificItems(items: T[]) {
+        items.forEach((item) => {
+            this.itemSubscribers.forEach((callback) =>
+                callback(item, this.items)
+            )
+        })
+    }
+
+    push(...newItems: T[]) {
+        this.items.push(...newItems)
+        this.notifyFullStateSubscribers()
+        this.notifyItemSubscribersOfSpecificItems(newItems)
+    }
+
+    remove(filterFn: (item: T) => boolean) {
+        // todo maybe, do this in place
+        const removedItems = this.items.filter(filterFn)
+        this.items = this.items.filter((item) => !filterFn(item))
+        if (removedItems.length > 0) {
+            this.notifyFullStateSubscribers()
+            // todo maybe: notify any "removed item" subscribers (not currently a thing)
+        }
+        return removedItems
+    }
+
+    set(newItems: T[]) {
+        this.items = [...newItems]
+        this.notifyFullStateSubscribers()
+        this.notifyItemSubscribersOfSpecificItems(newItems)
+    }
+
+    splice(start: number, deleteCount: number = 0, ...itemsToAdd: T[]) {
+        const deletedItems = this.items.splice(
+            start,
+            deleteCount,
+            ...itemsToAdd
+        )
+        this.notifyFullStateSubscribers()
+        this.notifyItemSubscribersOfSpecificItems(itemsToAdd)
+        return deletedItems
+    }
+
+    get length() {
+        return this.items.length
+    }
+
+    forEach(callback: (item: T) => void) {
+        return this.items.forEach(callback)
+    }
+}
+
 export function getRandomAnimal() {
     const animals = [
         "Aardvark",
