@@ -2,7 +2,7 @@
 
 
 we want to share documents, with these permissions:
-read, read/write, read/write/share           bonus: specific writes (eg add comment, don't modify other's comment.) -  (Too hard in current system within yjs/similar docs (maybe we could write each comment as separate docs))
+read, read/write, read/write/share           bonus: specific writes (eg add comment don't modify other's comment, or suggester mode) -  (Too hard in current system within yjs/similar docs (maybe we could write each comment as separate docs, or have suggestion as separate doc and then render them together))
 
 cool solution:
 instead of thinking about auth, just have secret keys (we need anyway for read permission)
