@@ -30,44 +30,38 @@ export async function connectToDoc(docId: string) {
     return { remoteDocUpdates, remoteAwarenessUpdates }
 }
 
-export async function getRemoteDocUpdateList(
-    docId: string
-): Promise<YUpdate[]> {
+// put this together, since our server will not know the difference so fetching from the server will have to fetch both
+export async function getRemoteUpdateList(docId: string) {
     // returns a list of yjs updates, can be processed by the provider into a yjs doc
-    return remoteDocUpdates.get(docId)!.toArray()
+    return {
+        docUpdates: remoteDocUpdates.get(docId)!.toArray(),
+        awarenessUpdates: remoteAwarenessUpdates.get(docId)!.toArray(),
+    }
 }
 
-// do we want this? // I wish awareness could be inside regular ydoc
-export async function getRemoteAwarenessUpdatesList(
-    docId: string
-): Promise<YUpdate[]> {
-    // returns a list of yjs updates, can be processed by the provider into a yjs doc
-    return remoteAwarenessUpdates.get(docId)!.toArray()
-}
-export async function subscribeToRemoteDocUpdates(
+export async function subscribeToRemoteUpdates(
     docId: string,
+    bucket: "doc" | "awareness",
     callback: (update: Uint8Array) => void
 ) {
     // register callback for when a new update is received
-    return remoteDocUpdates.get(docId)!.subscribeItem(callback)
-}
-export async function subscribeToRemoteAwarenessUpdates(
-    docId: string,
-    callback: (update: Uint8Array) => void
-) {
-    // register callback for when a new update is received
-    return remoteAwarenessUpdates.get(docId)!.subscribeItem(callback)
+    if (bucket === "doc") {
+        return remoteDocUpdates.get(docId)!.subscribeItem(callback)
+    } else {
+        return remoteAwarenessUpdates.get(docId)!.subscribeItem(callback)
+    }
 }
 
-export async function broadcastDocUpdate(docId: string, update: Uint8Array) {
-    remoteDocUpdates.get(docId)!.push(update)
-}
-
-export async function broadcastAwarenessUpdate(
+export async function broadcastUpdate(
     docId: string,
+    bucket: "doc" | "awareness",
     update: Uint8Array
 ) {
-    remoteAwarenessUpdates.get(docId)!.push(update)
+    if (bucket === "doc") {
+        remoteDocUpdates.get(docId)!.push(update)
+    } else {
+        remoteAwarenessUpdates.get(docId)!.push(update)
+    }
 }
 
 export async function doSquash(

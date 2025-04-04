@@ -14,13 +14,10 @@ import {
 // } from "./e2ee-server-interface"
 import {
     connectToDoc,
-    getRemoteDocUpdateList,
-    subscribeToRemoteDocUpdates,
-    broadcastDocUpdate,
-    broadcastAwarenessUpdate,
+    getRemoteUpdateList,
+    subscribeToRemoteUpdates,
+    broadcastUpdate,
     doSquash,
-    getRemoteAwarenessUpdatesList,
-    subscribeToRemoteAwarenessUpdates,
 } from "./mock-server-interface"
 
 type YUpdate = Uint8Array
@@ -39,15 +36,16 @@ export async function createRemoteDocProvider(
 ) {
     // "connect to the server doc"
     await connectToDoc(params.remoteDocId)
-    const remoteDocUpdates = await getRemoteDocUpdateList(params.remoteDocId)
+    const remoteUpdates = await getRemoteUpdateList(params.remoteDocId)
+    const remoteDocUpdates = remoteUpdates.docUpdates
+    const remoteAwarenessUpdates = remoteUpdates.awarenessUpdates
 
     // connect to the local yDoc
     const yDocProvider = createBaseProvider(yDoc, handleBroadcastUpdate)
 
+    // ---- Doc Interaction -----
     // initialize the local yDoc with all the previous remote state & updates
     mergeOnlineDocIntoLocal(yDocProvider, remoteDocUpdates)
-
-    // ---- Doc Interaction -----
 
     // write back to the server initial state from the yDoc that the server doesn't already have
     if (params.mergeInitialState) {
@@ -55,20 +53,17 @@ export async function createRemoteDocProvider(
     }
 
     // Listen to new updates from the "server", and apply them to the local doc
-    subscribeToRemoteDocUpdates(params.remoteDocId, (newItem) => {
+    subscribeToRemoteUpdates(params.remoteDocId, "doc", (newItem) => {
         yDocProvider.applyRemoteUpdate(newItem)
     })
 
     // broadcast local updates to the server. called by yDocProvider
     function handleBroadcastUpdate(update: Uint8Array) {
-        broadcastDocUpdate(params.remoteDocId, update)
+        broadcastUpdate(params.remoteDocId, "doc", update)
     }
 
     // ---- Awareness Interaction -----
-    // connect to the remote awareness
-    const remoteAwarenessUpdates = await getRemoteAwarenessUpdatesList(
-        params.remoteDocId
-    )
+    // const remoteAwarenessUpdates = remoteUpdates.awarenessUpdates
     // initialize the local awareness with all the previous remote state & updates
     const awareness = new Awareness(yDoc)
     remoteAwarenessUpdates.forEach((update) => {
@@ -76,7 +71,7 @@ export async function createRemoteDocProvider(
         // applyAwarenessUpdate(awareness, update, "provider")
     })
     // subscribe to remote awareness updates and apply them to the local awareness
-    subscribeToRemoteAwarenessUpdates(params.remoteDocId, (newItem) => {
+    subscribeToRemoteUpdates(params.remoteDocId, "awareness", (newItem) => {
         applyAwarenessUpdate(awareness, newItem, yDoc)
     })
     // subscribe to local awareness updates and broadcast them to the server
@@ -84,7 +79,7 @@ export async function createRemoteDocProvider(
         // broadcastAwarenessUpdate(params.remoteDocId, update)
         const changedClients = added.concat(updated).concat(removed)
         const encodedUpdate = encodeAwarenessUpdate(awareness, changedClients)
-        broadcastAwarenessUpdate(params.remoteDocId, encodedUpdate)
+        broadcastUpdate(params.remoteDocId, "awareness", encodedUpdate)
     })
     // remove ourselves from the remote awareness when we close the window (this should be done automatically after a while anyways, but this speeds it up)
     try {
@@ -114,10 +109,16 @@ function mergeLocalDocIntoOnline(
     const onlineStateVector = Y.encodeStateVector(onlineDoc)
     const update = Y.encodeStateAsUpdate(yDoc, onlineStateVector)
 
-    console.log("merging initial state", {
+    const updateIsEmpty = update.toString() === "0,0"
+    if (updateIsEmpty) {
+        return
+    }
+
+    console.info("merging initial state", {
         onlineDoc: onlineDoc.getText("text").toJSON(),
         yDoc: yDoc.getText("text").toJSON(),
         onlineStateVector,
+        update,
     })
     handleBroadcastUpdate(update)
 }
@@ -166,7 +167,6 @@ export function createBaseProvider(
         // now this update was produced either locally or by another provider.
 
         onBroadcastAttempt(update)
-        console.log("update!")
     })
 
     function onRemoteUpdateReceived(update: Uint8Array) {
