@@ -2,9 +2,9 @@ import { ObservableList } from "./utils"
 
 type YUpdate = Uint8Array
 
-//maybe
-const remoteDocUpdatesList = new ObservableList<YUpdate>()
-const remoteAwarenessUpdatesList = new ObservableList<YUpdate>()
+// //maybe
+// const remoteDocUpdatesList = new ObservableList<YUpdate>()
+// const remoteAwarenessUpdatesList = new ObservableList<YUpdate>()
 
 // make sure we are connected to server, make sure the doc is initialized
 export async function connectToDoc(docId: string) {
