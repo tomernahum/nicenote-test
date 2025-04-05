@@ -18,7 +18,7 @@ import {
     subscribeToRemoteUpdates,
     broadcastUpdate,
     doSquash,
-} from "./mock-server-interface"
+} from "./1--mock-server-interface"
 
 type YUpdate = Uint8Array
 

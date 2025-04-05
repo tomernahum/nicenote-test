@@ -1,0 +1,7 @@
+
+
+our main code (can find example in quill-binding-ex)
+calls 0-remote-provider to sync local yDoc, and awareness with remote
+0-remote-provider calls 1-provider-server-interface (or 1--mock-server-interface for testing)
+1-provider-server-interface calls (* crypto) and then (* 2-server-interface-ws) to encrypt and then send to server
+// ^^ maybe.   or is that too much? maybe serverinterface-ws can just be in 1-provider-server-interface, and so can crypto outside of a bit of generic wrapping of libsodium
