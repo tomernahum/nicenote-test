@@ -101,6 +101,7 @@ export async function createRemoteDocProvider(
 function mergeLocalDocIntoOnline(
     remoteDocUpdates: Uint8Array[],
     yDoc: Y.Doc,
+
     handleBroadcastUpdate: (update: Uint8Array) => void
 ) {
     const onlineDoc = getOnlineDoc(remoteDocUpdates)

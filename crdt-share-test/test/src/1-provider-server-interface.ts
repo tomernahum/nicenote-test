@@ -2,7 +2,6 @@ import { ObservableList } from "./utils"
 
 type YUpdate = Uint8Array
 
-
 // make sure we are connected to server, make sure the doc is initialized
 export async function connectToDoc(docId: string) {
     // connect to server
@@ -43,7 +42,3 @@ export async function doSquash(
 ) {}
 
 // ------
-
-decryptUpdate(){
-    
-}
