@@ -7,18 +7,16 @@ import {
 } from "y-protocols/awareness.js"
 
 // import {
-//     broadcastUpdate,
 //     connectToDoc,
-//     getRemoteDocUpdateList,
-//     subscribeToRemoteDocUpdates,
-// } from "./e2ee-server-interface"
+//     getRemoteUpdateList,
+//     subscribeToRemoteUpdates,
+//     broadcastUpdate,
+//     doSquash,
+// } from "./1--mock-server-interface"
 import {
-    connectToDoc,
-    getRemoteUpdateList,
-    subscribeToRemoteUpdates,
-    broadcastUpdate,
-    doSquash,
-} from "./1--mock-server-interface"
+    EncryptionParams,
+    getProviderServerInterface,
+} from "./1-provider-server-interface"
 
 type YUpdate = Uint8Array
 
@@ -31,9 +29,19 @@ export async function createRemoteDocProvider(
     params: {
         remoteDocId: string
         mergeInitialState?: boolean // defaults to defaulting to false,
+
+        encryptionParams: EncryptionParams
     }
     // todo maybe: rewrite params of func to be more like other providers y-websocket (url, roomname, doc) // may also need secret key params
 ) {
+    const {
+        connectToDoc,
+        getRemoteUpdateList,
+        subscribeToRemoteUpdates,
+        broadcastUpdate,
+        doSquash,
+    } = getProviderServerInterface(params.encryptionParams)
+
     // "connect to the server doc"
     await connectToDoc(params.remoteDocId)
     const remoteUpdates = await getRemoteUpdateList(params.remoteDocId)

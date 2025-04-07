@@ -5,3 +5,6 @@ calls 0-remote-provider to sync local yDoc, and awareness with remote
 0-remote-provider calls 1-provider-server-interface (or 1--mock-server-interface for testing)
 1-provider-server-interface calls (* crypto) and then (* 2-server-interface-ws) to encrypt and then send to server
 // ^^ maybe.   or is that too much? maybe serverinterface-ws can just be in 1-provider-server-interface, and so can crypto outside of a bit of generic wrapping of libsodium
+---
+
+by the way for dependency injection I am often just using file level import/export. might be better to pass as params so that consumer can decide dependencies without changing the code (eg swap out ws backend). Can rewrite later to wrap everything in a function/class that takes params, instead of in a file that has imports
