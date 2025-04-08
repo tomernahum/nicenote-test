@@ -29,9 +29,21 @@ export function getServerInterface() {
             docId: string,
             callback: (update: Uint8Array) => void
         ) => {
-            socket.on("", (docId: string, update: Uint8Array) => {
-                callback(update)
-            })
+            socket.emit("startListeningToDoc", docId)
+            socket.on(
+                "newUpdate",
+                (updateDocId: string, update: Uint8Array) => {
+                    if (updateDocId !== docId) return
+                    callback(update)
+                }
+            )
+
+            return () => {
+                socket.emit("stopListeningToDoc", docId)
+            }
         },
+        // getRemoteUpdateList: (docId: string) => {
+        //     //
+        // },
     }
 }

@@ -1,4 +1,4 @@
-import { encryptData } from "./2-crypto"
+import { decryptData, encryptData } from "./2-crypto"
 import { getServerInterface } from "./3-server-interface-socketio"
 import { ObservableList } from "./utils"
 
@@ -26,8 +26,15 @@ export function getProviderServerInterface(
         messageEncoded.set(update, 1)
         return messageEncoded
     }
+    function decodeUpdateMessage(message: Uint8Array) {
+        const bucket = message[0] === 100 ? "doc" : "awareness"
+        const update = message.slice(1)
+        return { bucket, update }
+    }
 
-    async function connectToDoc() {}
+    async function connectToDoc() {
+        await server.connect(docId)
+    }
 
     async function broadcastUpdate(
         bucket: "doc" | "awareness",
@@ -37,14 +44,29 @@ export function getProviderServerInterface(
 
         const encoded = encodeUpdateMessage(bucket, update)
         const encrypted = await encryptData(encryptionParams.mainKey, encoded)
-        server.addUpdate(docId, encrypted)
+        await server.addUpdate(docId, encrypted)
 
         return
+    }
+    async function subscribeToRemoteUpdates(
+        bucket: "doc" | "awareness" | "all",
+        callback: (update: Uint8Array) => void
+    ) {
+        await server.subscribeToRemoteUpdates(docId, async (update) => {
+            const decrypted = await decryptData(
+                encryptionParams.mainKey,
+                update
+            )
+            const decoded = decodeUpdateMessage(decrypted)
+            if (bucket !== "all" && decoded.bucket !== bucket) return
+            callback(decoded.update)
+        })
     }
 
     return {
         connectToDoc,
-
+        broadcastUpdate,
+        subscribeToRemoteUpdates,
         // connectToDoc,
         // getRemoteUpdateList,
         // subscribeToRemoteUpdates,

@@ -15,11 +15,22 @@ const io = new Server(3000, {
 io.on("connection", (socket) => {
     console.log(socket.id, "connected")
 
+    socket.on("startListeningToDoc", (docId: string) => {
+        socket.join(docId)
+    })
+    socket.on("stopListeningToDoc", (docId: string) => {
+        socket.leave(docId)
+    })
+
     // add an update to a doc
     socket.on("addUpdate", (docId: string, update: Uint8Array) => {
         console.log("addUpdate", docId, update)
         addDocOperation(docId, update)
-        // notify other clients
-        socket.to(docId).emit("addUpdate", docId, update)
+        // notify other clients listening to this doc
+        socket.to(docId).emit("newUpdate", docId, update)
     })
+
+    // socket.on("getFullUpdateList", (docId: string) => {
+    //     const fullUpdateList = getFullUpdateList(docId)
+    // })
 })
