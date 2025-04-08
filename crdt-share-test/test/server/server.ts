@@ -12,7 +12,7 @@ const io = new Server(3000, {
     },
 })
 
-// todo: non-socket getting
+// todo:  getAllDocOperations(docId) accessible from regular http api (since it takes a second to connect to socket)
 
 io.on("connection", (socket) => {
     console.log(socket.id, "connected")
@@ -31,6 +31,8 @@ io.on("connection", (socket) => {
         // notify other clients listening to this doc
         socket.to(docId).emit("newUpdate", docId, update)
     })
+
+    // ----
 
     socket.on(
         "getFullUpdateList",
