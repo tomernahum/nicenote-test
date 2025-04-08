@@ -14,6 +14,7 @@
     "lib0": "^0.2.101",
     "quill": "^2.0.3",
     "quill-cursors": "^4.0.4",
+    "socket.io-client": "^4.8.1",
     "y-protocols": "^1.0.6",
     "y-quill": "^1.0.0",
     "y-websocket": "^3.0.0",

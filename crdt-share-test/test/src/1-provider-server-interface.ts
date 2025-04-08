@@ -1,4 +1,5 @@
-import { getServerInterface } from "./3-server-interface-ws"
+import { encryptData } from "./2-crypto"
+import { getServerInterface } from "./3-server-interface-socketio"
 import { ObservableList } from "./utils"
 
 type YUpdate = Uint8Array
@@ -35,6 +36,8 @@ export function getProviderServerInterface(
         // TODO: maybe batch updates
 
         const encoded = encodeUpdateMessage(bucket, update)
+        const encrypted = await encryptData(encryptionParams.mainKey, encoded)
+        server.addUpdate(docId, encrypted)
 
         return
     }
