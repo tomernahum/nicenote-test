@@ -3,6 +3,8 @@ import { io } from "socket.io-client"
 // to be called by e2ee provider, with already encrypted data
 // then this can be swapped out to use plain ws, webrtc, etc
 
+type EncryptedUpdate = Uint8Array // generally 2 bytes version, 12 bytes iv, then ciphertext
+
 export function getServerInterface() {
     const socket = io()
     return {
@@ -22,17 +24,17 @@ export function getServerInterface() {
                 })
             })
         },
-        addUpdate: (docId: string, update: Uint8Array) => {
+        addUpdate: (docId: string, update: EncryptedUpdate) => {
             socket.emit("addUpdate", docId, update)
         },
         subscribeToRemoteUpdates: (
             docId: string,
-            callback: (update: Uint8Array) => void
+            callback: (update: EncryptedUpdate) => void
         ) => {
             socket.emit("startListeningToDoc", docId)
             socket.on(
                 "newUpdate",
-                (updateDocId: string, update: Uint8Array) => {
+                (updateDocId: string, update: EncryptedUpdate) => {
                     if (updateDocId !== docId) return
                     callback(update)
                 }
@@ -42,8 +44,16 @@ export function getServerInterface() {
                 socket.emit("stopListeningToDoc", docId)
             }
         },
-        // getRemoteUpdateList: (docId: string) => {
-        //     //
-        // },
+        getRemoteUpdateList: (docId: string) => {
+            return new Promise<EncryptedUpdate[]>((resolve) => {
+                socket.emit(
+                    "getFullUpdateList",
+                    docId,
+                    (fullUpdateList: EncryptedUpdate[]) => {
+                        resolve(fullUpdateList)
+                    }
+                )
+            })
+        },
     }
 }

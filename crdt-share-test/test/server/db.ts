@@ -22,6 +22,8 @@ db.exec(
     `CREATE INDEX IF NOT EXISTS idx_doc_operations_doc_id ON doc_operations (doc_id)`
 )
 
+// TODO, actually return the right types
+
 export function addDocOperation(docId: string, operation: Uint8Array) {
     const insert = db.prepare(
         `INSERT INTO doc_operations (doc_id, operation) VALUES (?, ?)`
@@ -29,7 +31,7 @@ export function addDocOperation(docId: string, operation: Uint8Array) {
     insert.run(docId, operation)
 }
 
-export function getDocOperations(docId: string) {
+export function getAllDocOperations(docId: string) {
     const select = db.prepare(
         `SELECT id, operation FROM doc_operations WHERE doc_id = ?`
     )

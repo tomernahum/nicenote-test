@@ -62,11 +62,28 @@ export function getProviderServerInterface(
             callback(decoded.update)
         })
     }
+    async function getRemoteUpdateList(bucket: "doc" | "awareness" | "all") {
+        const encryptedUpdates = await server.getRemoteUpdateList(docId)
+        const decryptedUpdates = await Promise.all(
+            encryptedUpdates.map(
+                async (update) =>
+                    await decryptData(encryptionParams.mainKey, update)
+            )
+        )
+        const decodedUpdates = decryptedUpdates.map((update) =>
+            decodeUpdateMessage(update)
+        )
+        const relevantDecodedUpdates = decodedUpdates
+            .filter((update) => update.bucket === bucket || bucket === "all")
+            .map((update) => update.update)
+        return relevantDecodedUpdates
+    }
 
     return {
         connectToDoc,
         broadcastUpdate,
         subscribeToRemoteUpdates,
+        getRemoteUpdateList,
         // connectToDoc,
         // getRemoteUpdateList,
         // subscribeToRemoteUpdates,

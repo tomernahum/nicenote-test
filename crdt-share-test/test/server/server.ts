@@ -1,5 +1,5 @@
 import { Server } from "socket.io"
-import { addDocOperation } from "./db"
+import { addDocOperation, getAllDocOperations } from "./db"
 // socketio
 
 // Note: socketio supports binding to alternative packages to ws, including, eiows, µWebSockets.js  swapping in one of these may improve performance
@@ -11,6 +11,8 @@ const io = new Server(3000, {
         origin: "*",
     },
 })
+
+// todo: non-socket getting
 
 io.on("connection", (socket) => {
     console.log(socket.id, "connected")
@@ -30,7 +32,11 @@ io.on("connection", (socket) => {
         socket.to(docId).emit("newUpdate", docId, update)
     })
 
-    // socket.on("getFullUpdateList", (docId: string) => {
-    //     const fullUpdateList = getFullUpdateList(docId)
-    // })
+    socket.on(
+        "getFullUpdateList",
+        (docId: string, callback: (fullUpdateList: Uint8Array[]) => void) => {
+            const fullUpdateList = getAllDocOperations(docId)
+            callback(fullUpdateList)
+        }
+    )
 })
