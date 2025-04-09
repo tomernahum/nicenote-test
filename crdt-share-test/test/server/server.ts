@@ -67,6 +67,8 @@ honoApp.get(
     (c) => {
         const { docId } = c.req.valid("param")
         const x = getAllDocOperations(docId)
+
+        // can not actually return uint8array without it getting autoserialized as something
         return c.json(x)
     }
 )

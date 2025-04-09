@@ -51,8 +51,24 @@ export function getServerInterface() {
             const response = await fetch(
                 "http://localhost:3000/getAllDocOperations/" + docId
             )
-            const data = await response.json()
-            return data
+            const data = await response.json() // TODO. need to change the encoding for this. currently wont work as expected
+
+            type ExpectedDataType = {
+                id: number
+                operation: Uint8Array
+            }[]
+            // validate it
+            if (
+                !Array.isArray(data) ||
+                !data.every(
+                    (item) =>
+                        typeof item.id === "number" &&
+                        item.operation instanceof Uint8Array
+                )
+            ) {
+                throw new Error("Invalid response format, response was", data)
+            }
+            return data as ExpectedDataType
         },
     }
 }

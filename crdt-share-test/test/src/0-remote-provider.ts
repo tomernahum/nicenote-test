@@ -39,12 +39,12 @@ export async function createRemoteDocProvider(
         getRemoteUpdateList,
         subscribeToRemoteUpdates,
         broadcastUpdate,
-        doSquash,
-    } = getProviderServerInterface(params.encryptionParams)
+        // doSquash,
+    } = getProviderServerInterface(params.remoteDocId, params.encryptionParams)
 
     // "connect to the server doc"
-    await connectToDoc(params.remoteDocId)
-    const remoteUpdates = await getRemoteUpdateList(params.remoteDocId)
+    await connectToDoc()
+    const remoteUpdates = await getRemoteUpdateList("all")
     const remoteDocUpdates = remoteUpdates.docUpdates
     const remoteAwarenessUpdates = remoteUpdates.awarenessUpdates
 

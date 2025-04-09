@@ -46,7 +46,19 @@ export function getProviderServerInterface(
 
         const encoded = encodeUpdateMessage(bucket, update)
         const encrypted = await encryptData(encryptionParams.mainKey, encoded)
-        await server.addUpdate(docId, encrypted)
+        try {
+            await server.addUpdate(docId, encrypted)
+        } catch (error) {
+            console.error("Failed to broadcast update:", error)
+            // TODO: handle error
+            // we should handle it by either
+            // undoing the update in 0-remote-provider (+ allowing user to be shown notif that something was rejected),
+            // or by retrying it (not sure which file is best for that),    or something else
+            throw error
+        }
+
+        // TODO: what if update is rejected? Should return that.
+        // Currently update is actually never rejected by server, but connection might fail
 
         return
     }
@@ -67,10 +79,15 @@ export function getProviderServerInterface(
     async function getRemoteUpdateList(bucket: "doc" | "awareness" | "all") {
         const encryptedUpdates = await server.getRemoteUpdateList(docId)
         const decryptedUpdates = await Promise.all(
-            encryptedUpdates.map(
-                async (update) =>
-                    await decryptData(encryptionParams.mainKey, update)
-            )
+            encryptedUpdates.map(async (update) => {
+                return {
+                    serverId: update.id,
+                    operation: await decryptData(
+                        encryptionParams.mainKey,
+                        update.operation
+                    ),
+                }
+            })
         )
         const decodedUpdates = decryptedUpdates.map((update) =>
             decodeUpdateMessage(update)
