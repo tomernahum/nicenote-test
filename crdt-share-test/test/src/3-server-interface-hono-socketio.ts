@@ -6,8 +6,10 @@ import { io } from "socket.io-client"
 type EncryptedUpdate = Uint8Array // generally 2 bytes version, 12 bytes iv, then ciphertext
 
 export function getServerInterface() {
+    // const hono = hc<HonoServer>("http://localhost:3000")
     const socket = io()
     return {
+        // may likely deprecate this flow of connecting first
         connect: async (docId: string) => {
             socket.connect()
             return new Promise<void>((resolve) => {
@@ -24,6 +26,7 @@ export function getServerInterface() {
                 })
             })
         },
+
         addUpdate: (docId: string, update: EncryptedUpdate) => {
             socket.emit("addUpdate", docId, update)
         },
@@ -44,16 +47,12 @@ export function getServerInterface() {
                 socket.emit("stopListeningToDoc", docId)
             }
         },
-        getRemoteUpdateList: (docId: string) => {
-            return new Promise<EncryptedUpdate[]>((resolve) => {
-                socket.emit(
-                    "getFullUpdateList",
-                    docId,
-                    (fullUpdateList: EncryptedUpdate[]) => {
-                        resolve(fullUpdateList)
-                    }
-                )
-            })
+        getRemoteUpdateList: async (docId: string) => {
+            const response = await fetch(
+                "http://localhost:3000/getAllDocOperations/" + docId
+            )
+            const data = await response.json()
+            return data
         },
     }
 }

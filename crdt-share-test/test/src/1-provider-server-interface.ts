@@ -1,5 +1,5 @@
 import { decryptData, encryptData } from "./2-crypto"
-import { getServerInterface } from "./3-server-interface-socketio"
+import { getServerInterface } from "./3-server-interface-hono-socketio"
 import { ObservableList } from "./utils"
 
 type YUpdate = Uint8Array
@@ -9,7 +9,9 @@ export type EncryptionParams = {
     validOldKeys: CryptoKey[]
 }
 
-/** Wraps server interface with encryption and decryption */
+/** Wraps server interface with encryption and decryption
+ *  maybe this should be rolled into 0-remote-provider, lots of unnecessary decoupling tbh makes you have to write the same code like 4 times
+ */
 export function getProviderServerInterface(
     docId: string,
     encryptionParams: EncryptionParams
@@ -84,6 +86,9 @@ export function getProviderServerInterface(
         broadcastUpdate,
         subscribeToRemoteUpdates,
         getRemoteUpdateList,
+        disconnect: () => {
+            server.disconnect()
+        },
         // connectToDoc,
         // getRemoteUpdateList,
         // subscribeToRemoteUpdates,

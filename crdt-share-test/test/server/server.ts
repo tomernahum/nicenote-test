@@ -3,24 +3,36 @@ import { addDocOperation, getAllDocOperations } from "./db"
 import { Hono } from "hono"
 import { serve } from "@hono/node-server"
 import { validator } from "hono/validator"
+import {
+    InterServerEvents,
+    ServerToClientEvents,
+    ClientToServerEvents,
+    SocketData,
+} from "./shared-types"
 
-// Note: socketio supports binding to alternative packages to ws, including, eiows, µWebSockets.js  swapping in one of these may improve performance
-// can also integrate with regular http server (ie with express, hono)
-// may replace the whole thing with cloudflare durable objects for the data and workers for transporting, then we can keep the documents as one durable object and have it be close to the users.
+// may replace the whole thing with something else, like cloudflare durable objects for the data and workers for transporting, then we can keep the documents as one durable object and have it be close to the users.
 
 const honoApp = new Hono()
 const httpServer = serve({
     fetch: honoApp.fetch,
     port: 3000,
 })
-const io = new Server(httpServer, {
+// Note: socketio supports binding to alternative packages to ws, including, eiows, µWebSockets.js  swapping in one of these may improve performance
+const io = new Server<
+    ClientToServerEvents,
+    ServerToClientEvents,
+    InterServerEvents,
+    SocketData
+>(httpServer, {
     cors: {
         origin: "*",
     },
 })
 
-// todo:  getAllDocOperations(docId) accessible from regular http api (since it takes a second to connect to socket)
+// SocketIo for realtime updates,
+// hono (http) for one off updates (faster to access without having to first setup websocket connection)
 
+// Socketio
 io.on("connection", (socket) => {
     console.log(socket.id, "connected")
 
@@ -34,12 +46,15 @@ io.on("connection", (socket) => {
     // add an update to a doc
     socket.on("addUpdate", (docId: string, update: Uint8Array) => {
         console.log("addUpdate", docId, update)
-        addDocOperation(docId, update)
+        const id = addDocOperation(docId, update)
         // notify other clients listening to this doc
-        socket.to(docId).emit("newUpdate", docId, update)
+        socket.to(docId).emit("newUpdate", docId, update, id)
     })
 })
 
+// TODO: squash, key rotation (key rotation planned to not be called by 3-server-interface but instead by a separate key management module (sold separately), which will also integrate with some service to securely send/agree on rotated keys with others)
+
+// Hono http server
 honoApp.get(
     "/getAllDocOperations/:docId",
     validator("param", (value, c) => {
@@ -51,6 +66,7 @@ honoApp.get(
     }),
     (c) => {
         const { docId } = c.req.valid("param")
-        return c.json(getAllDocOperations(docId))
+        const x = getAllDocOperations(docId)
+        return c.json(x)
     }
 )
