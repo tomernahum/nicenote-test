@@ -44,7 +44,12 @@ export async function createRemoteDocProvider(
 
     // "connect to the server doc"
     await connectToDoc()
-    const remoteUpdates = await getRemoteUpdateList("all")
+    console.log("connected to doc")
+    const remoteUpdates = await getRemoteUpdateList("all").catch((error) => {
+        console.warn("Failed to get remote updates for the yjs doc:", error)
+        // todo: show error message to user etc
+        throw error
+    })
     const remoteDocUpdates = remoteUpdates.docUpdates
     const remoteAwarenessUpdates = remoteUpdates.awarenessUpdates
 
@@ -67,6 +72,7 @@ export async function createRemoteDocProvider(
 
     // broadcast local updates to the server. called by yDocProvider
     function handleBroadcastUpdate(update: Uint8Array) {
+        console.log("detected doc update, broadcasting")
         broadcastUpdate("doc", update)
     }
 
@@ -86,6 +92,7 @@ export async function createRemoteDocProvider(
     awareness.on("update", ({ added, updated, removed }) => {
         const changedClients = added.concat(updated).concat(removed)
         const encodedUpdate = encodeAwarenessUpdate(awareness, changedClients)
+        console.log("detected awareness update, broadcasting")
         broadcastUpdate("awareness", encodedUpdate)
     })
     // remove ourselves from the remote awareness when we close the window (this should be done automatically after a while anyways, but this speeds it up)
@@ -98,6 +105,8 @@ export async function createRemoteDocProvider(
     }
 
     // TODO: squash functionality
+
+    console.log("initialized doc")
 
     return {
         awareness,

@@ -3,7 +3,8 @@ import { addDocOperation, getAllDocOperations } from "./db"
 import { Hono } from "hono"
 import { serve } from "@hono/node-server"
 import { validator } from "hono/validator"
-import {
+import { cors } from "hono/cors"
+import type {
     InterServerEvents,
     ServerToClientEvents,
     ClientToServerEvents,
@@ -17,6 +18,12 @@ const httpServer = serve({
     fetch: honoApp.fetch,
     port: 3000,
 })
+honoApp.use(
+    "*",
+    cors({
+        origin: "*",
+    })
+)
 // Note: socketio supports binding to alternative packages to ws, including, eiows, µWebSockets.js  swapping in one of these may improve performance
 const io = new Server<
     ClientToServerEvents,

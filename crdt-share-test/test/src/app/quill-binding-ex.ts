@@ -76,29 +76,31 @@ async function createEditor(elementSelector: string, remoteDocId: string) {
         },
     })
 
-    // if (elementSelector === "#editor1" || false) {
-    //     yDoc.on("update", (update) => {
-    //         updatesCount++
-    //         console.log("updateCount", updatesCount)
-    //     })
-    // }
+    if (false && (elementSelector === "#editor1" || false)) {
+        yDoc.on("update", (update) => {
+            updatesCount++
+            console.log("updateCount", updatesCount)
+        })
+    }
 
-    // // Specify awareness information for local user to integrate with quill-cursors
-    // yBindingProvider.awareness.setLocalStateField("user", {
-    //     name: `anonymous ${getRandomAnimal()}`,
-    //     color: getRandomColor(),
-    // })
+    // Specify awareness information for local user to integrate with quill-cursors
+    yBindingProvider.awareness.setLocalStateField("user", {
+        name: `anonymous ${getRandomAnimal()}`,
+        color: getRandomColor(),
+    })
 
     const quillEditor = createQuillEditor(elementSelector)
     const quillBinding = new QuillBinding(
         yType,
-        quillEditor
-        // yBindingProvider.awareness
+        quillEditor,
+        yBindingProvider.awareness
     )
 
-    // return { yDoc, yType, quillEditor, quillBinding, yBindingProvider }
+    return { yDoc, yType, quillEditor, quillBinding, yBindingProvider }
 }
 
-createEditor("#editor1", "doc1")
-createEditor("#editor2", "doc1")
-createEditor("#editor3", "doc1")
+await createEditor("#editor1", "doc1")
+console.log("----")
+await createEditor("#editor2", "doc1")
+console.log("----")
+await createEditor("#editor3", "doc1")

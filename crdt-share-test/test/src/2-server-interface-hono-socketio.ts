@@ -1,4 +1,8 @@
-import { io } from "socket.io-client"
+import { io, Socket } from "socket.io-client"
+import type {
+    ServerToClientEvents,
+    ClientToServerEvents,
+} from "../server/shared-types"
 
 // to be called by e2ee provider, with already encrypted data
 // then this can be swapped out to use plain ws, webrtc, etc
@@ -7,25 +11,24 @@ type EncryptedUpdate = Uint8Array // generally 2 bytes version, 12 bytes iv, the
 
 export function getServerInterface() {
     // const hono = hc<HonoServer>("http://localhost:3000")
-    const socket = io()
+    const SERVER_URL = "http://localhost:3000"
+    const socket: Socket<ServerToClientEvents, ClientToServerEvents> =
+        io(SERVER_URL)
     return {
         // may likely deprecate this flow of connecting first
         connect: async (docId: string) => {
+            // todo ping hono?
             socket.connect()
             return
-            return new Promise<void>((resolve, reject) => {
-                socket.on("connect", () => {
-                    resolve()
-                })
-                socket.on("connect_error", (error) => {
-                    console.error("Failed to connect to server:", error)
-                    reject("Failed to connect to server: connect_error")
-                })
-                socket.on("connect_timeout", () => {
-                    console.error("Failed to connect to server: timeout")
-                    reject("Failed to connect to server: timeout")
-                })
-            })
+            // return new Promise<void>((resolve, reject) => {
+            //     socket.on("connect", () => {
+            //         resolve()
+            //     })
+            //     socket.on("connect_error", (error) => {
+            //         console.error("Failed to connect to server:", error)
+            //         reject("Failed to connect to server: connect_error")
+            //     })
+            // })
         },
         disconnect: () => {
             socket.disconnect()
@@ -75,7 +78,10 @@ export function getServerInterface() {
                         item.operation instanceof Uint8Array
                 )
             ) {
-                throw new Error("Invalid response format, response was", data)
+                throw new Error(
+                    "Invalid response format, response was: " +
+                        JSON.stringify(data)
+                )
             }
             return data as ExpectedDataType
         },

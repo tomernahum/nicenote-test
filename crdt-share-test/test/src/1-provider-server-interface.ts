@@ -1,5 +1,5 @@
 import { decryptData, encryptData } from "./2-crypto"
-import { getServerInterface } from "./3-server-interface-hono-socketio"
+import { getServerInterface } from "./2-server-interface-hono-socketio"
 import { ObservableList } from "./utils"
 
 type YUpdate = Uint8Array
@@ -33,6 +33,8 @@ export function getProviderServerInterface(
         const update = message.slice(1)
         return { bucket, update }
     }
+    //--
+    // todo: i think its better to inline functions in the return (reading wise)
 
     async function connectToDoc() {
         await server.connect(docId)
@@ -42,6 +44,7 @@ export function getProviderServerInterface(
         bucket: "doc" | "awareness",
         update: Uint8Array
     ) {
+        // console.log("broadcasting update", bucket, update)
         // TODO: maybe batch updates
 
         const encoded = encodeUpdateMessage(bucket, update)
@@ -87,7 +90,16 @@ export function getProviderServerInterface(
     }>
     async function getRemoteUpdateList(bucket: "doc" | "awareness" | "all") {
         // get all the updates
-        const encryptedUpdates = await server.getRemoteUpdateList(docId)
+        const encryptedUpdates = await server
+            .getRemoteUpdateList(docId)
+            .catch((error) => {
+                throw new Error(
+                    "Error getting remote updates from the server",
+                    {
+                        cause: error,
+                    }
+                )
+            })
         const decryptedUpdates = await Promise.all(
             encryptedUpdates.map(async (update) => {
                 return {
