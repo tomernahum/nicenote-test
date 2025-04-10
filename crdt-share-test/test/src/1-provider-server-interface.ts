@@ -37,6 +37,7 @@ export function getProviderServerInterface(
     // todo: i think its better to inline functions in the return (reading wise)
 
     async function connectToDoc() {
+        // TODO deprecate maybe or dont
         await server.connect(docId)
     }
 

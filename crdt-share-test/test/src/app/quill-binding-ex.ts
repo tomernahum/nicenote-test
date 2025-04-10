@@ -103,7 +103,7 @@ async function createEditor(elementSelector: string, remoteDocId: string) {
 }
 
 await createEditor("#editor1", "doc1")
-console.log("----")
-await createEditor("#editor2", "doc1")
-console.log("----")
-await createEditor("#editor3", "doc1")
+// console.log("----")
+// await createEditor("#editor2", "doc1")
+// console.log("----")
+// await createEditor("#editor3", "doc1")

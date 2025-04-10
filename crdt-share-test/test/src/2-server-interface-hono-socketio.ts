@@ -20,6 +20,9 @@ export function getServerInterface() {
         connect: async (docId: string) => {
             // todo ping hono?
             socket.connect()
+            socket.on("connect", () => {
+                console.log(Date.now(), "Connected to socket.io server")
+            })
             return
             // return new Promise<void>((resolve, reject) => {
             //     socket.on("connect", () => {
@@ -92,6 +95,7 @@ export function getServerInterface() {
                         JSON.stringify(data)
                 )
             }
+            console.log(Date.now(), "got server state")
             return data as ExpectedDataType
         },
     }

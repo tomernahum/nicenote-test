@@ -1,3 +1,17 @@
-- Squashing Functionality
-- error handling (eg max server message size)
-- think about spam prevention??
+- Squash/snapshot Functionality!
+- delete/wipe doc functionality ()
+
+- proper cryptography key stuff.
+    - support multiple keys & while-running key rotation
+    - write keys
+
+- error handling down to user (eg max server message size)
+
+- maybe deprecate connect to doc flow, since we want to fetch it before connecting to socket part
+- or not. it's possible I got confused thinking that http is faster than spinning up websocket.
+
+
+- think about spam prevention story maybe? & integration with a proper authed / customized extendible server (besides cryptography auth)
+    - maybe turn backend into library or something idk
+
+- proper
