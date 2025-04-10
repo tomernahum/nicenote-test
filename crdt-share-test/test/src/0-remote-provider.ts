@@ -61,13 +61,13 @@ export async function createRemoteDocProvider(
     }
 
     // Listen to new updates from the "server", and apply them to the local doc
-    subscribeToRemoteUpdates(params.remoteDocId, "doc", (newItem) => {
+    subscribeToRemoteUpdates("doc", (newItem) => {
         yDocProvider.applyRemoteUpdate(newItem)
     })
 
     // broadcast local updates to the server. called by yDocProvider
     function handleBroadcastUpdate(update: Uint8Array) {
-        broadcastUpdate(params.remoteDocId, "doc", update)
+        broadcastUpdate("doc", update)
     }
 
     // ---- Awareness Interaction -----
@@ -79,15 +79,14 @@ export async function createRemoteDocProvider(
         // applyAwarenessUpdate(awareness, update, "provider")
     })
     // subscribe to remote awareness updates and apply them to the local awareness
-    subscribeToRemoteUpdates(params.remoteDocId, "awareness", (newItem) => {
+    subscribeToRemoteUpdates("awareness", (newItem) => {
         applyAwarenessUpdate(awareness, newItem, yDoc)
     })
     // subscribe to local awareness updates and broadcast them to the server
     awareness.on("update", ({ added, updated, removed }) => {
-        // broadcastAwarenessUpdate(params.remoteDocId, update)
         const changedClients = added.concat(updated).concat(removed)
         const encodedUpdate = encodeAwarenessUpdate(awareness, changedClients)
-        broadcastUpdate(params.remoteDocId, "awareness", encodedUpdate)
+        broadcastUpdate("awareness", encodedUpdate)
     })
     // remove ourselves from the remote awareness when we close the window (this should be done automatically after a while anyways, but this speeds it up)
     try {

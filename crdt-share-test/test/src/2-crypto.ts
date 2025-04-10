@@ -144,6 +144,5 @@ async function test() {
     //     await decryptData(key, malformedEncrypted2)
     // )
 }
-test()
 
 // TODO: more extensive tests, unit tests. These are pretty simple but it would still be a good idea. Note that web crypto api is not available in node.js, only in browsers

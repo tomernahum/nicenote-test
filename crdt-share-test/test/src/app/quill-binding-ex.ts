@@ -12,6 +12,7 @@ import "quill/dist/quill.snow.css"
 import { createRemoteDocProvider } from "../0-remote-provider"
 import { setLatency } from "../1--mock-server-interface"
 import { getRandomAnimal, getRandomColor } from "../utils"
+import { generateSymmetricEncryptionKey } from "../2-crypto"
 
 Quill.register("modules/cursors", QuillCursors)
 
@@ -69,29 +70,33 @@ async function createEditor(elementSelector: string, remoteDocId: string) {
     const yBindingProvider = await createRemoteDocProvider(yDoc, {
         remoteDocId,
         mergeInitialState: true,
+        encryptionParams: {
+            mainKey: await generateSymmetricEncryptionKey(),
+            validOldKeys: [],
+        },
     })
 
-    if (elementSelector === "#editor1" || false) {
-        yDoc.on("update", (update) => {
-            updatesCount++
-            console.log("updateCount", updatesCount)
-        })
-    }
+    // if (elementSelector === "#editor1" || false) {
+    //     yDoc.on("update", (update) => {
+    //         updatesCount++
+    //         console.log("updateCount", updatesCount)
+    //     })
+    // }
 
-    // Specify awareness information for local user to integrate with quill-cursors
-    yBindingProvider.awareness.setLocalStateField("user", {
-        name: `anonymous ${getRandomAnimal()}`,
-        color: getRandomColor(),
-    })
+    // // Specify awareness information for local user to integrate with quill-cursors
+    // yBindingProvider.awareness.setLocalStateField("user", {
+    //     name: `anonymous ${getRandomAnimal()}`,
+    //     color: getRandomColor(),
+    // })
 
     const quillEditor = createQuillEditor(elementSelector)
     const quillBinding = new QuillBinding(
         yType,
-        quillEditor,
-        yBindingProvider.awareness
+        quillEditor
+        // yBindingProvider.awareness
     )
 
-    return { yDoc, yType, quillEditor, quillBinding, yBindingProvider }
+    // return { yDoc, yType, quillEditor, quillBinding, yBindingProvider }
 }
 
 createEditor("#editor1", "doc1")

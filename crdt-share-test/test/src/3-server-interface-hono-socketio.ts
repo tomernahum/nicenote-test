@@ -12,9 +12,18 @@ export function getServerInterface() {
         // may likely deprecate this flow of connecting first
         connect: async (docId: string) => {
             socket.connect()
-            return new Promise<void>((resolve) => {
+            return
+            return new Promise<void>((resolve, reject) => {
                 socket.on("connect", () => {
                     resolve()
+                })
+                socket.on("connect_error", (error) => {
+                    console.error("Failed to connect to server:", error)
+                    reject("Failed to connect to server: connect_error")
+                })
+                socket.on("connect_timeout", () => {
+                    console.error("Failed to connect to server: timeout")
+                    reject("Failed to connect to server: timeout")
                 })
             })
         },

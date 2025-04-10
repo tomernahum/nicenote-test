@@ -76,7 +76,17 @@ export function getProviderServerInterface(
             callback(decoded.update)
         })
     }
+
+    // function overload for typing
+    function getRemoteUpdateList(
+        bucket: "doc" | "awareness"
+    ): Promise<Uint8Array[]>
+    function getRemoteUpdateList(bucket: "all"): Promise<{
+        docUpdates: Uint8Array[]
+        awarenessUpdates: Uint8Array[]
+    }>
     async function getRemoteUpdateList(bucket: "doc" | "awareness" | "all") {
+        // get all the updates
         const encryptedUpdates = await server.getRemoteUpdateList(docId)
         const decryptedUpdates = await Promise.all(
             encryptedUpdates.map(async (update) => {
@@ -90,12 +100,28 @@ export function getProviderServerInterface(
             })
         )
         const decodedUpdates = decryptedUpdates.map((update) =>
-            decodeUpdateMessage(update)
+            decodeUpdateMessage(update.operation)
         )
-        const relevantDecodedUpdates = decodedUpdates
-            .filter((update) => update.bucket === bucket || bucket === "all")
-            .map((update) => update.update)
-        return relevantDecodedUpdates
+        // sort the updates
+        if (bucket === "all") {
+            const docUpdates = decodedUpdates.filter(
+                (update) => update.bucket === "doc"
+            )
+            const awarenessUpdates = decodedUpdates.filter(
+                (update) => update.bucket === "awareness"
+            )
+            return {
+                docUpdates: docUpdates.map((update) => update.update),
+                awarenessUpdates: awarenessUpdates.map(
+                    (update) => update.update
+                ),
+            }
+        } else {
+            const relevantDecodedUpdates = decodedUpdates
+                .filter((update) => update.bucket === bucket)
+                .map((update) => update.update)
+            return relevantDecodedUpdates
+        }
     }
 
     return {
