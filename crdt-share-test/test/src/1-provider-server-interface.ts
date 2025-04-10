@@ -1,6 +1,7 @@
 import { decryptData, encryptData } from "./2-crypto"
 import { getServerInterface } from "./2-server-interface-hono-socketio"
 import { ObservableList } from "./utils"
+import { promiseAllSettled } from "./utils2"
 
 type YUpdate = Uint8Array
 
@@ -32,6 +33,15 @@ export function getProviderServerInterface(
         const bucket = message[0] === 100 ? "doc" : "awareness"
         const update = message.slice(1)
         return { bucket, update }
+    }
+
+    async function processNewUpdate(encryptedUpdate: Uint8Array) {
+        const decrypted = await decryptData(
+            encryptionParams.mainKey,
+            encryptedUpdate
+        )
+        const decoded = decodeUpdateMessage(decrypted)
+        return decoded
     }
     //--
     // todo: i think its better to inline functions in the return (reading wise)
@@ -82,11 +92,7 @@ export function getProviderServerInterface(
         callback: (update: Uint8Array) => void
     ) {
         await server.subscribeToRemoteUpdates(docId, async (update) => {
-            const decrypted = await decryptData(
-                encryptionParams.mainKey,
-                update
-            )
-            const decoded = decodeUpdateMessage(decrypted)
+            const decoded = await processNewUpdate(update)
             if (bucket !== "all" && decoded.bucket !== bucket) return
             callback(decoded.update)
         })
@@ -112,44 +118,53 @@ export function getProviderServerInterface(
                     }
                 )
             })
-        const decryptedUpdates = (
-            await Promise.all(
+        //
+        const decodedUpdates = (
+            await promiseAllSettled(
                 encryptedUpdates.map(async (update) => {
-                    try {
-                        const decrypted = await decryptData(
-                            encryptionParams.mainKey,
-                            update.operation
-                        )
-                        return {
-                            serverId: update.id,
-                            operation: decrypted,
-                        }
-                    } catch (error) {
-                        console.warn(
-                            "Error decrypting remote update, ignoring it",
-                            error
-                        )
-                        return undefined
-                    }
+                    return processNewUpdate(update.operation)
                 })
             )
-        ).filter((update) => update !== undefined)
+        ).fulfilled
 
-        const decodedUpdates = decryptedUpdates
-            .map((update) => {
-                try {
-                    const decoded = decodeUpdateMessage(update.operation)
+        // const decryptedUpdates = (
+        //     await Promise.all(
+        //         encryptedUpdates.map(async (update) => {
+        //             try {
+        //                 const decrypted = await decryptData(
+        //                     encryptionParams.mainKey,
+        //                     update.operation
+        //                 )
+        //                 return {
+        //                     serverId: update.id,
+        //                     operation: decrypted,
+        //                 }
+        //             } catch (error) {
+        //                 console.warn(
+        //                     "Error decrypting remote update, ignoring it",
+        //                     error
+        //                 )
+        //                 return undefined
+        //             }
+        //         })
+        //     )
+        // ).filter((update) => update !== undefined)
 
-                    return decoded
-                } catch (error) {
-                    console.warn(
-                        "Error interpreting remote update format, ignoring it",
-                        error
-                    )
-                    return undefined
-                }
-            })
-            .filter((update) => update !== undefined)
+        // const decodedUpdates = decryptedUpdates
+        //     .map((update) => {
+        //         try {
+        //             const decoded = decodeUpdateMessage(update.operation)
+
+        //             return decoded
+        //         } catch (error) {
+        //             console.warn(
+        //                 "Error interpreting remote update format, ignoring it",
+        //                 error
+        //             )
+        //             return undefined
+        //         }
+        //     })
+        //     .filter((update) => update !== undefined)
 
         // sort the updates
         if (bucket === "all") {

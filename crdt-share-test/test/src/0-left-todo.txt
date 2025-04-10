@@ -10,8 +10,11 @@
 - maybe deprecate connect to doc flow, since we want to fetch it before connecting to socket part
 - or not. it's possible I got confused thinking that http is faster than spinning up websocket.
 
+- batching of updates to mask frequency of them from server
 
-- think about spam prevention story maybe? & integration with a proper authed / customized extendible server (besides cryptography auth)
+
+- server: think about spam prevention story maybe? & integration with a proper authed / customized extendible server (besides cryptography auth)
     - maybe turn backend into library or something idk
 
-- proper
+
+- awareness is buggy sometimes!

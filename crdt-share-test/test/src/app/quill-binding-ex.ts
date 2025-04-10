@@ -42,17 +42,97 @@ latencyInput.addEventListener("input", (e) => {
 })
 
 function createQuillEditor(elementSelector: string) {
+    const toolbar1 = [
+        [{ header: [1, 2, false] }],
+        ["bold", "italic", "underline"],
+        ["image", "code-block"],
+    ]
+
+    const toolbar2 = [
+        // Font selection (Google Docs usually supports a variety of fonts)
+        [{ font: [] }],
+
+        // Header formatting (H1 to H6, plus normal text)
+        [{ header: [1, 2, 3, 4, 5, 6, false] }],
+
+        // Basic text formatting: Bold, Italic, Underline and Strike through.
+        ["bold", "italic", "underline", "strike"],
+
+        // Color and background color pickers
+        [{ color: [] }, { background: [] }],
+
+        // Subscript and Superscript (if needed)
+        [{ script: "sub" }, { script: "super" }],
+
+        // List options: Ordered and bullet list.
+        [{ list: "ordered" }, { list: "bullet" }],
+
+        // Indentation controls.
+        [{ indent: "-1" }, { indent: "+1" }],
+
+        // Text alignment options.
+        [{ align: [] }],
+
+        // Insert links, images, and videos.
+        ["link", "image", "video"],
+
+        // Clear formatting button.
+        ["clean"],
+    ]
+    const toolbar3 = [
+        // Font selection
+        [{ font: [] }],
+
+        // Header formatting (H1 to H6, plus normal text)
+        // [{ header: [1, 2, 3, 4, 5, 6, false] }],
+
+        // Font size (this might need a corresponding CSS configuration)
+        [{ size: ["small", false, "large", "huge"] }],
+        // [{ size: ['10px', '12px', '14px', '16px', '18px', '20px', '24px', '36px'] }],
+
+        // Basic text formatting: Bold, Italic, Underline, Strike through.
+        ["bold", "italic", "underline", "strike"],
+
+        ["link", "formula"],
+
+        // Subscript and superscript.
+        [{ script: "sub" }, { script: "super" }],
+
+        // Block formatting: Code Block and Blockquote.
+        ["blockquote", "code-block"],
+
+        // Color and background color pickers.
+        [{ color: [] }, { background: [] }],
+
+        // List options: Ordered and bullet lists.
+        [{ list: "ordered" }, { list: "bullet" }],
+
+        // Outdent and Indent.
+        [{ indent: "-1" }, { indent: "+1" }],
+
+        // Text alignment options.
+        [{ align: [] }],
+
+        // Media embeds: Link, Image, Video, Formula.
+        // ["link", "image", "video", "formula"],
+        ["image", "video"],
+
+        // Clear formatting.
+        ["clean"],
+
+        // (Optional) Custom item example: Adding a horizontal rule.
+        // You would need to implement a custom handler for this option.
+        // [{ // This is a custom group that you can tie to a custom handler.
+        //   handler: "insertHorizontalRule"
+        // }],
+    ]
     const quillEditor = new Quill(elementSelector, {
         modules: {
             cursors: true,
             // cursors: {
             //     transformOnTextChange: true,
             // },
-            toolbar: [
-                [{ header: [1, 2, false] }],
-                ["bold", "italic", "underline"],
-                ["image", "code-block"],
-            ],
+            toolbar: toolbar3,
             history: {
                 // Local undo shouldn't undo changes
                 // from remote users
@@ -103,7 +183,7 @@ async function createEditor(elementSelector: string, remoteDocId: string) {
 }
 
 await createEditor("#editor1", "doc1")
-// console.log("----")
-// await createEditor("#editor2", "doc1")
+console.log("----")
+await createEditor("#editor2", "doc1")
 // console.log("----")
 // await createEditor("#editor3", "doc1")
