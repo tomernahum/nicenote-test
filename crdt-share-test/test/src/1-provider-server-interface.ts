@@ -100,20 +100,45 @@ export function getProviderServerInterface(
                     }
                 )
             })
-        const decryptedUpdates = await Promise.all(
-            encryptedUpdates.map(async (update) => {
-                return {
-                    serverId: update.id,
-                    operation: await decryptData(
-                        encryptionParams.mainKey,
-                        update.operation
-                    ),
+        const decryptedUpdates = (
+            await Promise.all(
+                encryptedUpdates.map(async (update) => {
+                    try {
+                        const decrypted = await decryptData(
+                            encryptionParams.mainKey,
+                            update.operation
+                        )
+                        return {
+                            serverId: update.id,
+                            operation: decrypted,
+                        }
+                    } catch (error) {
+                        console.warn(
+                            "Error decrypting remote update, ignoring it",
+                            error
+                        )
+                        return undefined
+                    }
+                })
+            )
+        ).filter((update) => update !== undefined)
+
+        const decodedUpdates = decryptedUpdates
+            .map((update) => {
+                try {
+                    const decoded = decodeUpdateMessage(update.operation)
+
+                    return decoded
+                } catch (error) {
+                    console.warn(
+                        "Error interpreting remote update format, ignoring it",
+                        error
+                    )
+                    return undefined
                 }
             })
-        )
-        const decodedUpdates = decryptedUpdates.map((update) =>
-            decodeUpdateMessage(update.operation)
-        )
+            .filter((update) => update !== undefined)
+
         // sort the updates
         if (bucket === "all") {
             const docUpdates = decodedUpdates.filter(

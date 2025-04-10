@@ -30,6 +30,18 @@ export async function generateSymmetricEncryptionKeyNonExportable() {
     )
     return key
 }
+export async function getNonSecretHardCodedKeyForTesting(seed: number = 0) {
+    const seedArray = new Uint8Array(16)
+    seedArray.set([seed])
+
+    return await crypto.subtle.importKey(
+        "raw",
+        seedArray,
+        { name: "AES-GCM", length: 256 },
+        true,
+        ["encrypt", "decrypt"]
+    )
+}
 
 const SCHEMA = {
     version: [0, 1], // two bytes, will be encoded into every returned ci
@@ -90,13 +102,24 @@ export async function encryptData(key: CryptoKey, data: Uint8Array) {
     return encrypted
 }
 export async function decryptData(key: CryptoKey, encrypted: Uint8Array) {
-    const schemaVersion = encrypted.slice(0, 2).join("")
-    if (schemaVersion != "01") {
-        throw new Error("Invalid encryption schema version, expected v01")
-    }
     if (encrypted.length < 14) {
         throw new Error(
             "Invalid encrypted data length, expected at least 14 bytes"
+        )
+    }
+
+    const schemaVersion = encrypted.slice(0, 2).toString()
+    if (schemaVersion != "0,1") {
+        console.warn(
+            "Invalid encryption schema version",
+            // encrypted,
+            encrypted.slice(0, 2),
+            encrypted.slice(0, 2).toString()
+            // Array.from(encrypted.slice(0, 2))
+        )
+        throw new Error(
+            "Invalid encryption schema version, expected `0,1`, got " +
+                schemaVersion
         )
     }
 

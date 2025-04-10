@@ -12,7 +12,10 @@ import "quill/dist/quill.snow.css"
 import { createRemoteDocProvider } from "../0-remote-provider"
 import { setLatency } from "../1--mock-server-interface"
 import { getRandomAnimal, getRandomColor } from "../utils"
-import { generateSymmetricEncryptionKey } from "../2-crypto"
+import {
+    generateSymmetricEncryptionKey,
+    getNonSecretHardCodedKeyForTesting,
+} from "../2-crypto"
 
 Quill.register("modules/cursors", QuillCursors)
 
@@ -71,7 +74,7 @@ async function createEditor(elementSelector: string, remoteDocId: string) {
         remoteDocId,
         mergeInitialState: true,
         encryptionParams: {
-            mainKey: await generateSymmetricEncryptionKey(),
+            mainKey: await getNonSecretHardCodedKeyForTesting(),
             validOldKeys: [],
         },
     })

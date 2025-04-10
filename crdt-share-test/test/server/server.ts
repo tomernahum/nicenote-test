@@ -9,7 +9,8 @@ import type {
     ServerToClientEvents,
     ClientToServerEvents,
     SocketData,
-} from "./shared-types"
+} from "../shared/shared-types"
+import { encodeOperations } from "../shared/serializer"
 
 // may replace the whole thing with something else, like cloudflare durable objects for the data and workers for transporting, then we can keep the documents as one durable object and have it be close to the users.
 
@@ -74,8 +75,14 @@ honoApp.get(
     (c) => {
         const { docId } = c.req.valid("param")
         const x = getAllDocOperations(docId)
-
-        // can not actually return uint8array without it getting autoserialized as something
-        return c.json(x)
+        console.log(x)
+        const binaryEncoded = encodeOperations(x)
+        return new Response(binaryEncoded, {
+            status: 200,
+            headers: {
+                "Content-Type": "application/octet-stream",
+                "Content-Length": binaryEncoded.length.toString(),
+            },
+        })
     }
 )

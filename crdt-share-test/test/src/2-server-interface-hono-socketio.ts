@@ -2,7 +2,8 @@ import { io, Socket } from "socket.io-client"
 import type {
     ServerToClientEvents,
     ClientToServerEvents,
-} from "../server/shared-types"
+} from "../shared/shared-types"
+import { decodeOperations } from "../shared/serializer"
 
 // to be called by e2ee provider, with already encrypted data
 // then this can be swapped out to use plain ws, webrtc, etc
@@ -49,9 +50,13 @@ export function getServerInterface() {
             socket.emit("startListeningToDoc", docId)
             socket.on(
                 "newUpdate",
-                (updateDocId: string, update: EncryptedUpdate) => {
+                (
+                    updateDocId: string,
+                    update: EncryptedUpdate,
+                    updateServerId
+                ) => {
                     if (updateDocId !== docId) return
-                    callback(update)
+                    callback(new Uint8Array(update)) // sometimes it returns a raw array buffer even though it shouldn't
                 }
             )
 
@@ -63,7 +68,11 @@ export function getServerInterface() {
             const response = await fetch(
                 "http://localhost:3000/getAllDocOperations/" + docId
             )
-            const data = await response.json() // TODO. need to change the encoding for this. currently wont work as expected
+            // const data = await response.json() // TODO. need to change the encoding for this. currently wont work as expected
+            const dataBinary = await response.arrayBuffer()
+            console.log("response binary", dataBinary)
+            const data = decodeOperations(new Uint8Array(dataBinary))
+            console.log("data", data)
 
             type ExpectedDataType = {
                 id: number
