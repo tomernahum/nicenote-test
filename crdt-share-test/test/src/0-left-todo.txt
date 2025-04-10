@@ -1,0 +1,3 @@
+- Squashing Functionality
+- error handling (eg max server message size)
+- think about spam prevention??

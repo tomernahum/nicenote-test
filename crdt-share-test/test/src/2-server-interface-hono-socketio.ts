@@ -56,7 +56,7 @@ export function getServerInterface() {
                     updateServerId
                 ) => {
                     if (updateDocId !== docId) return
-                    callback(new Uint8Array(update)) // sometimes it returns a raw array buffer even though it shouldn't
+                    callback(new Uint8Array(update)) // sometimes/always it returns a raw array buffer even though it shouldn't
                 }
             )
 

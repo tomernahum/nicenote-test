@@ -47,16 +47,27 @@ export function getProviderServerInterface(
         // console.log("broadcasting update", bucket, update)
         // TODO: maybe batch updates
 
-        const encoded = encodeUpdateMessage(bucket, update)
-        const encrypted = await encryptData(encryptionParams.mainKey, encoded)
         try {
+            const encoded = encodeUpdateMessage(bucket, update)
+            const encrypted = await encryptData(
+                encryptionParams.mainKey,
+                encoded
+            )
+            console.log("update to broadcast:", bucket, {
+                update,
+                encoded,
+                encrypted,
+            })
             await server.addUpdate(docId, encrypted)
         } catch (error) {
             console.error("Failed to broadcast update:", error)
             // TODO: handle error
             // we should handle it by either
             // undoing the update in 0-remote-provider (+ allowing user to be shown notif that something was rejected),
+            //      or if we can't we can periodically rerender from only confirmed updates (happens when user reloads the page already)
+            //      or we can just detect the error/divergence, tell the user and ask them to reload for proper access
             // or by retrying it (not sure which file is best for that),    or something else
+            // or if it is because it's too big for one message, maybe split it into multiple messages
             throw error
         }
 
