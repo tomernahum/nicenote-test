@@ -18,3 +18,10 @@
 
 
 - awareness is buggy sometimes!
+--
+
+
+Make sure everything is good
+
+--
+- could abstract bucket from "doc"|"awareness" to be any string, to more easily connect to other crdts or even ordered reducers

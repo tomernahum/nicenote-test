@@ -1,7 +1,7 @@
 import { decryptData, encryptData } from "./2-crypto"
 import { getServerInterface } from "./2-server-interface-hono-socketio"
 import { ObservableList } from "./utils"
-import { promiseAllSettled } from "./utils2"
+import { promiseAllSettled, tryCatch } from "./utils2"
 
 type YUpdate = Uint8Array
 
@@ -18,6 +18,7 @@ export function getProviderServerInterface(
     encryptionParams: EncryptionParams
 ) {
     const server = getServerInterface()
+    let encryptionConfig = encryptionParams
 
     function encodeUpdateMessage(
         bucket: "doc" | "awareness",
@@ -35,16 +36,36 @@ export function getProviderServerInterface(
         return { bucket, update }
     }
 
-    async function processNewUpdate(encryptedUpdate: Uint8Array) {
-        const decrypted = await decryptData(
-            encryptionParams.mainKey,
-            encryptedUpdate
+    async function decryptUpdate(encryptedUpdate: Uint8Array) {
+        const decryptedMainKey = await tryCatch(
+            decryptData(encryptionConfig.mainKey, encryptedUpdate)
         )
+        if (!decryptedMainKey.error) {
+            return decryptedMainKey.data
+        }
+        for (const key of encryptionConfig.validOldKeys) {
+            const decryptedR = await tryCatch(decryptData(key, encryptedUpdate))
+            if (!decryptedR.error) {
+                return decryptedR.data
+            }
+        }
+        throw new Error("Failed to decrypt update")
+    }
+    async function encryptUpdate(encodedUpdate: Uint8Array) {
+        const encrypted = await encryptData(
+            encryptionConfig.mainKey,
+            encodedUpdate
+        )
+        return encrypted
+    }
+
+    async function processNewUpdate(encryptedUpdate: Uint8Array) {
+        const decrypted = await decryptUpdate(encryptedUpdate)
         const decoded = decodeUpdateMessage(decrypted)
         return decoded
     }
     //--
-    // todo: i think its better to inline functions in the return (reading wise)
+    // todo: maybe its better to inline functions in the return (reading wise)
 
     async function connectToDoc() {
         // TODO deprecate maybe or dont
@@ -60,10 +81,7 @@ export function getProviderServerInterface(
 
         try {
             const encoded = encodeUpdateMessage(bucket, update)
-            const encrypted = await encryptData(
-                encryptionParams.mainKey,
-                encoded
-            )
+            const encrypted = await encryptUpdate(encoded)
             console.log("update to broadcast:", bucket, {
                 update,
                 encoded,
@@ -119,52 +137,18 @@ export function getProviderServerInterface(
                 )
             })
         //
-        const decodedUpdates = (
-            await promiseAllSettled(
-                encryptedUpdates.map(async (update) => {
-                    return processNewUpdate(update.operation)
-                })
+        const updates = await promiseAllSettled(
+            encryptedUpdates.map(async (update) => {
+                return processNewUpdate(update.operation)
+            })
+        )
+        const decodedUpdates = updates.fulfilled
+        if (updates.rejected.length > 0) {
+            console.warn(
+                "Failed to process some encrypted updates (skipped them)",
+                updates.rejected
             )
-        ).fulfilled
-
-        // const decryptedUpdates = (
-        //     await Promise.all(
-        //         encryptedUpdates.map(async (update) => {
-        //             try {
-        //                 const decrypted = await decryptData(
-        //                     encryptionParams.mainKey,
-        //                     update.operation
-        //                 )
-        //                 return {
-        //                     serverId: update.id,
-        //                     operation: decrypted,
-        //                 }
-        //             } catch (error) {
-        //                 console.warn(
-        //                     "Error decrypting remote update, ignoring it",
-        //                     error
-        //                 )
-        //                 return undefined
-        //             }
-        //         })
-        //     )
-        // ).filter((update) => update !== undefined)
-
-        // const decodedUpdates = decryptedUpdates
-        //     .map((update) => {
-        //         try {
-        //             const decoded = decodeUpdateMessage(update.operation)
-
-        //             return decoded
-        //         } catch (error) {
-        //             console.warn(
-        //                 "Error interpreting remote update format, ignoring it",
-        //                 error
-        //             )
-        //             return undefined
-        //         }
-        //     })
-        //     .filter((update) => update !== undefined)
+        }
 
         // sort the updates
         if (bucket === "all") {
@@ -196,51 +180,9 @@ export function getProviderServerInterface(
         disconnect: () => {
             server.disconnect()
         },
-        // connectToDoc,
-        // getRemoteUpdateList,
-        // subscribeToRemoteUpdates,
-        // broadcastUpdate,
-        // doSquash,
+        swapEncryptionParams: (newParams: EncryptionParams) => {
+            // TODO test
+            encryptionConfig = newParams
+        },
     }
 }
-
-// make sure we are connected to server, make sure the doc is initialized
-// export async function connectToDoc(docId: string) {
-//     // connect to server
-//     // make sure the doc is initialized
-// }
-
-// // returns a list of yjs updates, can be processed by the provider into a yjs doc
-// export async function getRemoteUpdateList(docId: string) {
-//     return {
-//         docUpdates: [],
-//         awarenessUpdates: [],
-//         // could one day add other buckets for things outside of yjs (like a reducer based one, or other crdts). Or maybe do it in a separate system idk
-//     }
-// }
-
-// // register callback for when a new update is received
-// export async function subscribeToRemoteUpdates(
-//     docId: string,
-//     bucket: "doc" | "awareness", // could later add other buckets
-//     callback: (update: Uint8Array) => void
-// ) {}
-
-// export async function broadcastUpdate(
-//     docId: string,
-//     bucket: "doc" | "awareness",
-//     update: Uint8Array
-// ) {
-//     // encode
-//     // encrypt
-//     //send
-// }
-
-// // TODO TODO // also need to figure out where to implement this...
-// export async function doSquash(
-//     docId: string,
-//     lastSeenUpdateIdentifier: unknown,
-//     newUpdate: Uint8Array
-// ) {}
-
-// ------

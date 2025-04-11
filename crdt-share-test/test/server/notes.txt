@@ -1,0 +1,11 @@
+
+Squash / snapshot (client story)
+1. get ordered list of updates
+    - need to filter out ones that came from user & didn't get merged in yet
+    - maybe just load straight from server 
+2. create snapshot with them, as a single update (process same as any other update, just bigger (ie Y.encodeStateAsUpdate))
+3. save the snapshot on server
+4. when client requests all state, give them the snapshot + all updates since
+5. maybe also provide a request for client to truly get all updates
+6. after X time, delete the events that the snapshot already represents
+maybe ask for two snapshots

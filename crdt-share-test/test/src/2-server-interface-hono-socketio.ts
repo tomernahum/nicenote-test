@@ -98,5 +98,13 @@ export function getServerInterface() {
             console.log(Date.now(), "got server state")
             return data as ExpectedDataType
         },
+
+        doSqaush: async (
+            docId: string
+            // lastSeenUpdateIdentifier: unknown,
+            // newUpdate: Uint8Array
+        ) => {
+            return
+        },
     }
 }
