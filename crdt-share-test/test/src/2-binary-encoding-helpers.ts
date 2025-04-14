@@ -30,6 +30,7 @@ export function encodeList(listOfBinary: Uint8Array[]) {
         out.set(update, currentOffset)
         currentOffset += update.byteLength
     }
+    return out
 }
 export function decodeList(encoded: Uint8Array) {
     const out: Uint8Array[] = []
@@ -42,4 +43,5 @@ export function decodeList(encoded: Uint8Array) {
         currentOffset += length
         out.push(update)
     }
+    return out
 }

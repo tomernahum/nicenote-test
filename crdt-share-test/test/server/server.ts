@@ -53,7 +53,7 @@ io.on("connection", (socket) => {
 
     // add an update to a doc
     socket.on("addUpdate", (docId: string, update: Uint8Array) => {
-        console.log("addUpdate", docId)
+        console.log(socket.id, docId, "addUpdate")
         const id = addDocOperation(docId, update)
         // notify other clients listening to this doc
         socket.to(docId).emit("newUpdate", docId, update, id)

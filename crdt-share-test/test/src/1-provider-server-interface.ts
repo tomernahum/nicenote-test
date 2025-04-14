@@ -1,3 +1,4 @@
+import { decodeList, encodeList } from "./2-binary-encoding-helpers"
 import { decryptData, encryptData } from "./2-crypto"
 import { getServerInterface } from "./2-server-interface-hono-socketio"
 import { ObservableList } from "./utils"
@@ -11,7 +12,9 @@ export type EncryptionParams = {
     // TODO: write key
 }
 
-function createDecoder() {}
+// function createDecoder() {}
+
+type Bucket = "doc" | "awareness"
 
 /** Wraps server interface with encryption and decryption
  *  maybe this should be rolled into 0-remote-provider, lots of unnecessary decoupling tbh makes you have to write the same code like 4 times
@@ -26,10 +29,7 @@ export function getProviderServerInterface(
     const MULTI_UPDATE_PREFIX = 0
     const DOC_PREFIX = 100
     const AWARENESS_PREFIX = 97
-    function encodeOneUpdateMessage(
-        bucket: "doc" | "awareness",
-        update: Uint8Array
-    ) {
+    function encodeOneUpdateMessage(bucket: Bucket, update: Uint8Array) {
         const bucketEncoded = bucket === "doc" ? DOC_PREFIX : AWARENESS_PREFIX
         const messageEncoded = new Uint8Array(update.length + 1)
         messageEncoded[0] = bucketEncoded
@@ -45,41 +45,19 @@ export function getProviderServerInterface(
 
     function encodeMultipleUpdatesAsOne(
         updates: {
-            bucket: "doc" | "awareness"
+            bucket: Bucket
             update: Uint8Array
         }[]
     ) {
-        function encode4ByteNumber(number: number) {
-            if (number < 0 || number > 4294967295) {
-                throw new Error("Number out of bounds for 4-byte encoding")
-            }
-            const buffer = new ArrayBuffer(4)
-            const view = new DataView(buffer)
-            view.setUint32(0, number, true) // little-endian
-            return new Uint8Array(buffer)
-        }
-
-        const encodedIndividualUpdates = updates.map((update) =>
-            encodeOneUpdateMessage(update.bucket, update.update)
-        )
-        const outLength =
-            1 +
-            encodedIndividualUpdates.reduce(
-                (acc, update) => acc + update.byteLength + 4, // 4 bytes for length prefix
-                0
+        const encoded = encodeList(
+            updates.map((update) =>
+                encodeOneUpdateMessage(update.bucket, update.update)
             )
-        const out = new Uint8Array(outLength)
-        let currentOffset = 0
+        )
+        const out = new Uint8Array(encoded.length + 1)
 
         out[0] = MULTI_UPDATE_PREFIX
-        currentOffset = 1
-        for (const update of encodedIndividualUpdates) {
-            const lengthPrefix = encode4ByteNumber(update.byteLength)
-            out.set(lengthPrefix, currentOffset)
-            currentOffset += 4
-            out.set(update, currentOffset)
-            currentOffset += update.byteLength
-        }
+        out.set(encoded, 1)
         return out
     }
     function decodeMultiUpdate(message: Uint8Array): {
@@ -91,26 +69,8 @@ export function getProviderServerInterface(
             return [decodeOneUpdateMessage(message)]
         }
 
-        function decode4ByteNumber(buffer: Uint8Array) {
-            const view = new DataView(
-                buffer.buffer,
-                buffer.byteOffset,
-                buffer.byteLength
-            )
-            return view.getUint32(0, true)
-        }
-
-        const updatesOut: { bucket: string; update: Uint8Array }[] = []
-        let currentOffset = 1
-        while (currentOffset < message.byteLength) {
-            const lengthPrefix = message.slice(currentOffset, currentOffset + 4)
-            const length = decode4ByteNumber(lengthPrefix)
-            currentOffset += 4
-            const update = message.slice(currentOffset, currentOffset + length)
-            currentOffset += length
-            updatesOut.push(decodeOneUpdateMessage(update))
-        }
-        return updatesOut
+        const out = decodeList(message.slice(1))
+        return out.map((update) => decodeOneUpdateMessage(update))
     }
 
     async function decryptUpdate(encryptedUpdate: Uint8Array) {
@@ -136,12 +96,10 @@ export function getProviderServerInterface(
         return encrypted
     }
 
-    async function processNewUpdate(encryptedUpdate: Uint8Array) {
+    async function decryptAndDecodeNewUpdate(encryptedUpdate: Uint8Array) {
         const decrypted = await decryptUpdate(encryptedUpdate)
-        const decoded = decodeOneUpdateMessage(decrypted)
-        // const decoded = decodeMultiUpdate(decrypted)
+        const decoded = decodeMultiUpdate(decrypted)
 
-        // TODO, support update that is really multiple updates
         return decoded
     }
     //--
@@ -153,10 +111,7 @@ export function getProviderServerInterface(
         await server.connect(docId)
     }
 
-    async function broadcastUpdate(
-        bucket: "doc" | "awareness",
-        update: Uint8Array
-    ) {
+    async function broadcastUpdate(bucket: Bucket, update: Uint8Array) {
         // console.log("broadcasting update", bucket, update)
         // TODO: maybe batch updates
 
@@ -187,27 +142,27 @@ export function getProviderServerInterface(
         return
     }
     async function subscribeToRemoteUpdates(
-        bucket: "doc" | "awareness" | "all",
+        bucket: Bucket | "all",
         callback: (update: Uint8Array) => void
     ) {
         await server.subscribeToRemoteUpdates(docId, async (update) => {
-            const decoded = await processNewUpdate(update)
-            if (bucket !== "all" && decoded.bucket !== bucket) return
-            callback(decoded.update)
+            const updates = await decryptAndDecodeNewUpdate(update)
+            for (const update of updates) {
+                if (bucket !== "all" && update.bucket !== bucket) return
+                callback(update.update)
+            }
         })
     }
 
     // function overload for typing
-    function getRemoteUpdateList(
-        bucket: "doc" | "awareness"
-    ): Promise<Uint8Array[]>
+    function getRemoteUpdateList(bucket: Bucket): Promise<Uint8Array[]>
     function getRemoteUpdateList(bucket: "all"): Promise<{
         docUpdates: Uint8Array[]
         awarenessUpdates: Uint8Array[]
     }>
-    async function getRemoteUpdateList(bucket: "doc" | "awareness" | "all") {
+    async function getRemoteUpdateList(bucket: Bucket | "all") {
         // get all the updates
-        const encryptedUpdates = await server
+        const encryptedUpdatesFromServer = await server
             .getRemoteUpdateList(docId)
             .catch((error) => {
                 throw new Error(
@@ -217,26 +172,25 @@ export function getProviderServerInterface(
                     }
                 )
             })
-        //
-        const updates = await promiseAllSettled(
-            encryptedUpdates.map(async (update) => {
-                return processNewUpdate(update.operation)
+        const updatePromises = await promiseAllSettled(
+            encryptedUpdatesFromServer.map(async (update) => {
+                return decryptAndDecodeNewUpdate(update.operation)
             })
         )
-        const decodedUpdates = updates.fulfilled
-        if (updates.rejected.length > 0) {
+        if (updatePromises.rejected.length > 0) {
             console.warn(
                 "Failed to process some encrypted updates (skipped them)",
-                updates.rejected
+                updatePromises.rejected
             )
         }
+        const updates = updatePromises.fulfilled.flat()
 
         // sort the updates
         if (bucket === "all") {
-            const docUpdates = decodedUpdates.filter(
+            const docUpdates = updates.filter(
                 (update) => update.bucket === "doc"
             )
-            const awarenessUpdates = decodedUpdates.filter(
+            const awarenessUpdates = updates.filter(
                 (update) => update.bucket === "awareness"
             )
             return {
@@ -246,7 +200,7 @@ export function getProviderServerInterface(
                 ),
             }
         } else {
-            const relevantDecodedUpdates = decodedUpdates
+            const relevantDecodedUpdates = updates
                 .filter((update) => update.bucket === bucket)
                 .map((update) => update.update)
             return relevantDecodedUpdates
