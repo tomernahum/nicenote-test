@@ -10,6 +10,8 @@ if (!dbFilePath) {
 console.log(dbFilePath)
 
 const db = new Database(dbFilePath)
+// Though not required, it is generally important to set the WAL pragma for performance reasons.
+// db.pragma("journal_mode = WAL")
 
 db.exec(
     `CREATE TABLE IF NOT EXISTS doc_operations (
@@ -37,4 +39,30 @@ export function getAllDocOperations(docId: string) {
         `SELECT id, operation FROM doc_operations WHERE doc_id = ?`
     )
     return select.all(docId) as { id: number; operation: Uint8Array }[]
+}
+
+export function processSnapshot(
+    docId: string,
+    snapshot: Uint8Array,
+    lastUpdateRowToReplace: number | BigInt
+) {
+    // For now we just delete what we are asked to delete, and add the snapshot update
+    // may want to change to keep rows later
+    const deleteOp = db.prepare(`
+        DELETE FROM doc_operations WHERE doc_id = ? AND id <= ?
+    `)
+    const insert = db.prepare(`
+        INSERT INTO doc_operations (doc_id, operation) VALUES (?, ?)
+    `)
+    const processSnapshot = db.transaction(
+        (
+            docId: string,
+            snapshot: Uint8Array,
+            lastUpdateRowToReplace: number | BigInt
+        ) => {
+            deleteOp.run(docId, lastUpdateRowToReplace)
+            insert.run(docId, snapshot)
+        }
+    )
+    processSnapshot(docId, snapshot, lastUpdateRowToReplace)
 }

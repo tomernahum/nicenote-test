@@ -8,7 +8,10 @@ type YUpdate = Uint8Array
 export type EncryptionParams = {
     mainKey: CryptoKey
     validOldKeys: CryptoKey[]
+    // TODO: write key
 }
+
+function createDecoder() {}
 
 /** Wraps server interface with encryption and decryption
  *  maybe this should be rolled into 0-remote-provider, lots of unnecessary decoupling tbh makes you have to write the same code like 4 times
@@ -20,20 +23,94 @@ export function getProviderServerInterface(
     const server = getServerInterface()
     let encryptionConfig = encryptionParams
 
-    function encodeUpdateMessage(
+    const MULTI_UPDATE_PREFIX = 0
+    const DOC_PREFIX = 100
+    const AWARENESS_PREFIX = 97
+    function encodeOneUpdateMessage(
         bucket: "doc" | "awareness",
         update: Uint8Array
     ) {
-        const bucketEncoded = bucket === "doc" ? 100 : 97 // ascii values for 'd' and 'a'
+        const bucketEncoded = bucket === "doc" ? DOC_PREFIX : AWARENESS_PREFIX
         const messageEncoded = new Uint8Array(update.length + 1)
         messageEncoded[0] = bucketEncoded
         messageEncoded.set(update, 1)
         return messageEncoded
     }
-    function decodeUpdateMessage(message: Uint8Array) {
-        const bucket = message[0] === 100 ? "doc" : "awareness"
+
+    function decodeOneUpdateMessage(message: Uint8Array) {
+        const bucket = message[0] === DOC_PREFIX ? "doc" : "awareness"
         const update = message.slice(1)
         return { bucket, update }
+    }
+
+    function encodeMultipleUpdatesAsOne(
+        updates: {
+            bucket: "doc" | "awareness"
+            update: Uint8Array
+        }[]
+    ) {
+        function encode4ByteNumber(number: number) {
+            if (number < 0 || number > 4294967295) {
+                throw new Error("Number out of bounds for 4-byte encoding")
+            }
+            const buffer = new ArrayBuffer(4)
+            const view = new DataView(buffer)
+            view.setUint32(0, number, true) // little-endian
+            return new Uint8Array(buffer)
+        }
+
+        const encodedIndividualUpdates = updates.map((update) =>
+            encodeOneUpdateMessage(update.bucket, update.update)
+        )
+        const outLength =
+            1 +
+            encodedIndividualUpdates.reduce(
+                (acc, update) => acc + update.byteLength + 4, // 4 bytes for length prefix
+                0
+            )
+        const out = new Uint8Array(outLength)
+        let currentOffset = 0
+
+        out[0] = MULTI_UPDATE_PREFIX
+        currentOffset = 1
+        for (const update of encodedIndividualUpdates) {
+            const lengthPrefix = encode4ByteNumber(update.byteLength)
+            out.set(lengthPrefix, currentOffset)
+            currentOffset += 4
+            out.set(update, currentOffset)
+            currentOffset += update.byteLength
+        }
+        return out
+    }
+    function decodeMultiUpdate(message: Uint8Array): {
+        bucket: string
+        update: Uint8Array
+    }[] {
+        const updatePrefix = message[0]
+        if (updatePrefix !== MULTI_UPDATE_PREFIX) {
+            return [decodeOneUpdateMessage(message)]
+        }
+
+        function decode4ByteNumber(buffer: Uint8Array) {
+            const view = new DataView(
+                buffer.buffer,
+                buffer.byteOffset,
+                buffer.byteLength
+            )
+            return view.getUint32(0, true)
+        }
+
+        const updatesOut: { bucket: string; update: Uint8Array }[] = []
+        let currentOffset = 1
+        while (currentOffset < message.byteLength) {
+            const lengthPrefix = message.slice(currentOffset, currentOffset + 4)
+            const length = decode4ByteNumber(lengthPrefix)
+            currentOffset += 4
+            const update = message.slice(currentOffset, currentOffset + length)
+            currentOffset += length
+            updatesOut.push(decodeOneUpdateMessage(update))
+        }
+        return updatesOut
     }
 
     async function decryptUpdate(encryptedUpdate: Uint8Array) {
@@ -61,11 +138,15 @@ export function getProviderServerInterface(
 
     async function processNewUpdate(encryptedUpdate: Uint8Array) {
         const decrypted = await decryptUpdate(encryptedUpdate)
-        const decoded = decodeUpdateMessage(decrypted)
+        const decoded = decodeOneUpdateMessage(decrypted)
+        // const decoded = decodeMultiUpdate(decrypted)
+
+        // TODO, support update that is really multiple updates
         return decoded
     }
     //--
-    // todo: maybe its better to inline functions in the return (reading wise)
+
+    //--
 
     async function connectToDoc() {
         // TODO deprecate maybe or dont
@@ -80,7 +161,7 @@ export function getProviderServerInterface(
         // TODO: maybe batch updates
 
         try {
-            const encoded = encodeUpdateMessage(bucket, update)
+            const encoded = encodeOneUpdateMessage(bucket, update)
             const encrypted = await encryptUpdate(encoded)
             console.log("update to broadcast:", bucket, {
                 update,
@@ -170,6 +251,14 @@ export function getProviderServerInterface(
                 .map((update) => update.update)
             return relevantDecodedUpdates
         }
+    }
+
+    async function applySnapshot(snapshots: {
+        doc: Uint8Array
+        awareness: Uint8Array
+        // may make buckets dynamic
+    }) {
+        // combine snapshots into one, encrypt, send to server
     }
 
     return {

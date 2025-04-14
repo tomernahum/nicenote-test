@@ -1,4 +1,43 @@
 
+1. squash your own updates
+2. send snapshots
+    a. without local 
+    b. with local (may overlap but that's ok) (may circumvent any write-specific blockages if they are added)
+    
+2B. send: update, marker of what to replace (last row ID to replace)
+
+
+
+
+
+----
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+
+
+
 Squash / snapshot (client story)
 1. get ordered list of updates
     - need to filter out ones that came from user & didn't get merged in yet
@@ -9,3 +48,44 @@ Squash / snapshot (client story)
 5. maybe also provide a request for client to truly get all updates
 6. after X time, delete the events that the snapshot already represents
 maybe ask for two snapshots
+
+--
+either
+1) any writer client can squash, we trust them to get it right first truly
+    either:
+        1) tell server which updates we are squashing (may not include ones we didn't hear about yet)
+        2) tell server what the last seen update was,
+           make sure it is ordered
+2) server requests squash of specific range of data, maybe requests from two clients just in case
+    (unnecessary data transfer)
+wait
+
+options:
+- client squashes just it's updates into one (using Y.mergeUpdates), tells server about it
+    - needs middle-range
+    - .
+        - can store which client an update came from in the db
+
+    
+- client squashes any arbitrary number of updates (but not from the start) (using Y.mergeUpdates), tells server about it
+    - needs middle-range
+- client knows which updates are optimistic vs canonicalized by the server, squashes canonicalized updates only
+    - needs canonical vs optimistic
+
+
+problems:
+canonical vs optimistic
+canonical order
+middle range
+
+
+--
+
+options
+* from start vs middle-range-merge 
+* canonical order vs not
+* confirmed only vs including own optimistic
+
+combined options to consider
+* from start + canonical order + confirmed only
+* middle-range + X + X

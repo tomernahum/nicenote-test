@@ -1,5 +1,5 @@
 import { Server } from "socket.io"
-import { addDocOperation, getAllDocOperations } from "./db"
+import { addDocOperation, getAllDocOperations, processSnapshot } from "./db"
 import { Hono } from "hono"
 import { serve } from "@hono/node-server"
 import { validator } from "hono/validator"
@@ -58,6 +58,18 @@ io.on("connection", (socket) => {
         // notify other clients listening to this doc
         socket.to(docId).emit("newUpdate", docId, update, id)
     })
+
+    socket.on(
+        "snapshot",
+        (
+            docId: string,
+            snapshot: Uint8Array,
+            lastUpdateRowToReplace: number | BigInt
+        ) => {
+            console.log("snapshot", docId, lastUpdateRowToReplace)
+            processSnapshot(docId, snapshot, lastUpdateRowToReplace)
+        }
+    )
 })
 
 // TODO: squash, key rotation (key rotation planned to not be called by 3-server-interface but instead by a separate key management module (sold separately), which will also integrate with some service to securely send/agree on rotated keys with others)

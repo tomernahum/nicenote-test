@@ -95,6 +95,7 @@ export async function createRemoteDocProvider(
         console.log("detected awareness update, broadcasting")
         broadcastUpdate("awareness", encodedUpdate)
     })
+
     // remove ourselves from the remote awareness when we close the window (this should be done automatically after a while anyways, but this speeds it up)
     try {
         window.addEventListener("beforeunload", () => {
@@ -104,7 +105,16 @@ export async function createRemoteDocProvider(
         console.warn(e)
     }
 
-    // TODO: squash functionality
+    // squash/snapshot functionality
+    async function doSnapshot() {
+        // const currentUpdates = await getRemoteUpdateList("all")
+        const yDocSnapshot = Y.encodeStateAsUpdate(yDoc)
+        const awarenessClients = Array.from(awareness.getStates().keys())
+        const yAwarenessSnapshot = encodeAwarenessUpdate(
+            awareness,
+            awarenessClients
+        )
+    }
 
     console.log("initialized doc")
 
