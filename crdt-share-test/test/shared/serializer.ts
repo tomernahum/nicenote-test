@@ -1,5 +1,10 @@
 // AI GENERATED
 
+// used for encoding/decoding list of (rowId + operation binary data)[] between server and client receiver.
+// I forgot about this and separately coded my own encode helper at the unencrypted application layer (2-binary-encoding-helpers + some logic in 1)
+// to help encode  list of (bucketId + operation binary data)[]
+// I should probably merge those together hahaha TODO
+
 export function encodeOperations(
     data: { id: number; operation: Uint8Array }[]
 ): Uint8Array {

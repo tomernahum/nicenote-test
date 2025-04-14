@@ -1,12 +1,16 @@
 
-1. squash your own updates
+1. squash your own updates (maybe in a later version)
 2. send snapshots
     a. without local 
     b. with local (may overlap but that's ok) (may circumvent any write-specific blockages if they are added)
     
 2B. send: update, marker of what to replace (last row ID to replace)
 
+---
 
+current proposed system: send marker of latest update id, will replace all before them
+could this be a problem??
+maybe client needs to make sure it heard about every update sequentially up to the latestKnownUpdateID
 
 
 

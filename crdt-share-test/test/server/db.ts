@@ -47,7 +47,7 @@ export function processSnapshot(
     lastUpdateRowToReplace: number | BigInt
 ) {
     // For now we just delete what we are asked to delete, and add the snapshot update
-    // may want to change to keep rows later
+    // may want to change later to keep rows for a time
     const deleteOp = db.prepare(`
         DELETE FROM doc_operations WHERE doc_id = ? AND id <= ?
     `)
@@ -60,15 +60,19 @@ export function processSnapshot(
             snapshot: Uint8Array,
             lastUpdateRowToReplace: number | BigInt
         ) => {
-            const x = deleteOp.run(docId, lastUpdateRowToReplace)
-            const y = insert.run(docId, snapshot)
+            const deleteRes = deleteOp.run(docId, lastUpdateRowToReplace)
+
+            // TODO: if snapshots capture the same rowrangeend twice, we can skip the insert to save data (hopefully they are mostly the same)
+            // or if snapshot comes in that replaces rows before an existing snapshot that already ran, we can skip the insert
+
+            const insertRes = insert.run(docId, snapshot)
 
             console.log(
                 "ran transaction",
                 "rows deleted:",
-                x.changes,
+                deleteRes.changes,
                 "rows inserted:",
-                y.changes
+                insertRes.changes
             )
         }
     )

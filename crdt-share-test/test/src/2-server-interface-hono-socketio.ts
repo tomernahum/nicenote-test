@@ -48,18 +48,17 @@ export function getServerInterface() {
         },
         subscribeToRemoteUpdates: (
             docId: string,
-            callback: (update: EncryptedUpdate) => void
+            callback: (
+                update: EncryptedUpdate,
+                updateRow?: number | BigInt
+            ) => void
         ) => {
             socket.emit("startListeningToDoc", docId)
             socket.on(
                 "newUpdate",
-                (
-                    updateDocId: string,
-                    update: EncryptedUpdate,
-                    updateServerId
-                ) => {
+                (updateDocId: string, update: EncryptedUpdate, updateRow) => {
                     if (updateDocId !== docId) return
-                    callback(new Uint8Array(update)) // sometimes/always it returns a raw array buffer even though it shouldn't
+                    callback(new Uint8Array(update), updateRow) // sometimes/always it returns a raw array buffer even though it shouldn't
                 }
             )
 
