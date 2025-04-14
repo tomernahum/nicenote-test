@@ -60,8 +60,10 @@ export function processSnapshot(
             snapshot: Uint8Array,
             lastUpdateRowToReplace: number | BigInt
         ) => {
-            deleteOp.run(docId, lastUpdateRowToReplace)
-            insert.run(docId, snapshot)
+            const x = deleteOp.run(docId, lastUpdateRowToReplace)
+            const y = insert.run(docId, snapshot)
+
+            console.log(x.changes, y.changes)
         }
     )
     processSnapshot(docId, snapshot, lastUpdateRowToReplace)

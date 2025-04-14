@@ -48,7 +48,11 @@ const SCHEMA = {
     // this version = aes-gcm 256 bit key with 12 byte iv (randomly generated), padding as below with 128 at end then 0s
 
     // ciphertext length will be rounded up to the closest of these values, in bytes. The highest value is the max supported length
-    paddingLengthCheckpoints: [256, 2048, 16384],
+    paddingLengthCheckpoints: [256, 2048, 16_384, 65_536, 262144], //1_048_576 = 1 mebibyte
+    // note that both regular updates (as little as 1 character change), and snapshots (length of entire document)
+    // currently both use this same scheme (server can tell the difference between the two things though so we could seperate it if desired)
+    // also both small updates (type 1 character) and large (paste long text) will both use this same scheme, and we want server not to be able to distinguish between them as much as possible
+    // we could also support arbitrary length, but we don't want to do that anyways because of network limitations
 }
 
 // TODO: best to be sure padding be done in constant time, I think

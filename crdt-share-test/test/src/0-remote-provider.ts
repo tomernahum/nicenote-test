@@ -39,7 +39,7 @@ export async function createRemoteDocProvider(
         getRemoteUpdateList,
         subscribeToRemoteUpdates,
         broadcastUpdate,
-        // doSquash,
+        applySnapshot,
     } = getProviderServerInterface(params.remoteDocId, params.encryptionParams)
 
     // "connect to the server doc"
@@ -107,19 +107,24 @@ export async function createRemoteDocProvider(
 
     // squash/snapshot functionality
     async function doSnapshot() {
-        // const currentUpdates = await getRemoteUpdateList("all")
         const yDocSnapshot = Y.encodeStateAsUpdate(yDoc)
         const awarenessClients = Array.from(awareness.getStates().keys())
         const yAwarenessSnapshot = encodeAwarenessUpdate(
             awareness,
             awarenessClients
         )
+        await applySnapshot([
+            { bucket: "doc", update: yDocSnapshot },
+            { bucket: "awareness", update: yAwarenessSnapshot },
+        ])
     }
+    setInterval(doSnapshot, 10000)
 
     console.log("initialized doc")
 
     return {
         awareness,
+        _internal: {},
     }
 }
 

@@ -14,7 +14,7 @@ export interface ClientToServerEvents {
     startListeningToDoc: (docId: string) => void
     stopListeningToDoc: (docId: string) => void
     addUpdate: (docId: string, update: Uint8Array) => void
-    snapshot: (
+    applySnapshot: (
         docId: string,
         snapshot: Uint8Array,
         lastUpdateRowToReplace: number | BigInt

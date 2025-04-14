@@ -16,6 +16,7 @@ import {
     generateSymmetricEncryptionKey,
     getNonSecretHardCodedKeyForTesting,
 } from "../2-crypto"
+import { getProviderServerInterface } from "../1-provider-server-interface"
 
 Quill.register("modules/cursors", QuillCursors)
 
@@ -187,3 +188,18 @@ console.log("----")
 await createEditor("#editor2", "doc1")
 // console.log("----")
 // await createEditor("#editor3", "doc1")
+
+async function createDisplay(docId: string) {
+    const provider = await createRemoteDocProvider(new Y.Doc(), {
+        remoteDocId: docId,
+        mergeInitialState: false,
+        encryptionParams: {
+            mainKey: await getNonSecretHardCodedKeyForTesting(),
+            validOldKeys: [],
+        },
+    })
+    // const interface = getProviderServerInterface(
+    //     params.remoteDocId,
+    //     params.encryptionParams
+    // )
+}

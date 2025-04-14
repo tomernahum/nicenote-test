@@ -99,12 +99,17 @@ export function getServerInterface() {
             return data as ExpectedDataType
         },
 
-        doSqaush: async (
-            docId: string
-            // lastSeenUpdateIdentifier: unknown,
-            // newUpdate: Uint8Array
+        applySnapshot: async (
+            docId: string,
+            snapshot: Uint8Array,
+            lastUpdateRowToReplace: number | BigInt
         ) => {
-            return
+            socket.emit(
+                "applySnapshot",
+                docId,
+                snapshot,
+                lastUpdateRowToReplace
+            )
         },
     }
 }

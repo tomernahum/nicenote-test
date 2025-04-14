@@ -38,7 +38,7 @@ const io = new Server<
 })
 
 // SocketIo for realtime updates,
-// hono (http) for one off updates (faster to access without having to first setup websocket connection)
+// hono (http) for one off updates (I thought it would be faster to access without having to first setup websocket connection, but I think I was wrong it's not a big difference)
 
 // Socketio
 io.on("connection", (socket) => {
@@ -60,13 +60,18 @@ io.on("connection", (socket) => {
     })
 
     socket.on(
-        "snapshot",
+        "applySnapshot",
         (
             docId: string,
             snapshot: Uint8Array,
             lastUpdateRowToReplace: number | BigInt
         ) => {
             console.log("snapshot", docId, lastUpdateRowToReplace)
+
+            if (lastUpdateRowToReplace === -1) {
+                // delete everything
+                processSnapshot(docId, snapshot, Number.MAX_SAFE_INTEGER - 1)
+            }
             processSnapshot(docId, snapshot, lastUpdateRowToReplace)
         }
     )

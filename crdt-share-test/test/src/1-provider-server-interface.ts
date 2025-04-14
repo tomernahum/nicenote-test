@@ -26,6 +26,11 @@ export function getProviderServerInterface(
     const server = getServerInterface()
     let encryptionConfig = encryptionParams
 
+    //
+    let lastKnownUpdateId: number | null = null
+
+    //
+
     const MULTI_UPDATE_PREFIX = 0
     const DOC_PREFIX = 100
     const AWARENESS_PREFIX = 97
@@ -96,6 +101,7 @@ export function getProviderServerInterface(
         return encrypted
     }
 
+    // nevermind for now: /** Also updates lastKnownUpdateId */
     async function decryptAndDecodeNewUpdate(encryptedUpdate: Uint8Array) {
         const decrypted = await decryptUpdate(encryptedUpdate)
         const decoded = decodeMultiUpdate(decrypted)
@@ -141,6 +147,36 @@ export function getProviderServerInterface(
 
         return
     }
+
+    /**
+     * Snapshot is made out of multiple updates (will be encrypted together and sent as one update to the server),
+     * anything not captured in the snapshot will be lost
+     * recommended: one update per bucket
+     */
+    async function applySnapshot(
+        updates: {
+            bucket: Bucket
+            update: Uint8Array
+        }[]
+    ) {
+        // combine snapshots into one, encrypt, send to server
+        const encoded = encodeMultipleUpdatesAsOne(updates)
+
+        const encrypted = await tryCatch(encryptUpdate(encoded))
+        if (encrypted.error) {
+            console.error(
+                "Failed to encrypt snapshot (could be because document is too long):",
+                encrypted.error
+            )
+            throw encrypted.error
+        }
+
+        const lastKnownId = -1 // TODO
+
+        console.log("applying snapshot!")
+        await server.applySnapshot(docId, encrypted.data, lastKnownId)
+    }
+
     async function subscribeToRemoteUpdates(
         bucket: Bucket | "all",
         callback: (update: Uint8Array) => void
@@ -207,17 +243,10 @@ export function getProviderServerInterface(
         }
     }
 
-    async function applySnapshot(snapshots: {
-        doc: Uint8Array
-        awareness: Uint8Array
-        // may make buckets dynamic
-    }) {
-        // combine snapshots into one, encrypt, send to server
-    }
-
     return {
         connectToDoc,
         broadcastUpdate,
+        applySnapshot,
         subscribeToRemoteUpdates,
         getRemoteUpdateList,
         disconnect: () => {
