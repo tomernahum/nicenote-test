@@ -67,10 +67,10 @@ io.on("connection", (socket) => {
             lastUpdateRowToReplace: number | BigInt
         ) => {
             console.log(socket.id, docId, "snapshot", lastUpdateRowToReplace)
-
             if (lastUpdateRowToReplace === -1) {
                 // delete everything
                 processSnapshot(docId, snapshot, Number.MAX_SAFE_INTEGER - 1)
+                return
             }
             processSnapshot(docId, snapshot, lastUpdateRowToReplace)
         }

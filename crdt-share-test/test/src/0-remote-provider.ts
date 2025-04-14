@@ -118,7 +118,7 @@ export async function createRemoteDocProvider(
             { bucket: "awareness", update: yAwarenessSnapshot },
         ])
     }
-    setInterval(doSnapshot, 10000) // TODO: make this smarter
+    setInterval(doSnapshot, 5000) // TODO: make this smarter
 
     console.log("initialized doc")
 
