@@ -33,6 +33,8 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
     <div id="editor2"></div>
     <br />
     <div id="editor3"></div>
+    <br />
+    <div id="data-display"></div>
   </div>
 `
 // latency slider
@@ -185,21 +187,64 @@ async function createEditor(elementSelector: string, remoteDocId: string) {
 
 await createEditor("#editor1", "doc1")
 console.log("----")
-await createEditor("#editor2", "doc1")
+// await createEditor("#editor2", "doc1")
 // console.log("----")
 // await createEditor("#editor3", "doc1")
 
 async function createDisplay(docId: string) {
+    const dataDisplayDiv = document.getElementById("data-display")!
+    dataDisplayDiv.innerHTML = `
+        <pre id="json-display" 
+            style="overflow: scroll; max-height: 600px;"
+        >...</pre>
+        <button id = "refresh-button"> Refresh </button>
+    `
+    const jsonDisplay = dataDisplayDiv.querySelector("pre")!
+    const refreshButton = dataDisplayDiv.querySelector("button")!
+
+    const encryptionParams = {
+        mainKey: await getNonSecretHardCodedKeyForTesting(),
+        validOldKeys: [],
+    }
     const provider = await createRemoteDocProvider(new Y.Doc(), {
         remoteDocId: docId,
         mergeInitialState: false,
-        encryptionParams: {
-            mainKey: await getNonSecretHardCodedKeyForTesting(),
-            validOldKeys: [],
-        },
+        encryptionParams,
     })
-    // const interface = getProviderServerInterface(
-    //     params.remoteDocId,
-    //     params.encryptionParams
-    // )
+    const serverInterface = await getProviderServerInterface(
+        docId,
+        encryptionParams
+    )
+
+    serverInterface.connectToDoc()
+
+    async function refresh() {
+        const remoteUpdates = await serverInterface.getRemoteUpdateList("all")
+
+        function stringifyUint8ArrayArray(array: Uint8Array[]) {
+            function stringifyUint8Array(arr: Uint8Array) {
+                // return JSON.stringify(Array.from(arr))
+                return `${arr.byteLength} byte update (decrypted)`
+            }
+
+            return array.map(stringifyUint8Array)
+        }
+
+        const stringifiedUpdates = JSON.stringify(
+            {
+                docUpdates: stringifyUint8ArrayArray(remoteUpdates.docUpdates),
+                awarenessUpdates: stringifyUint8ArrayArray(
+                    remoteUpdates.awarenessUpdates
+                ),
+            },
+            null,
+            2
+        )
+        console.log("remoteUpdates", remoteUpdates)
+        jsonDisplay.textContent = stringifiedUpdates
+    }
+
+    refreshButton.addEventListener("click", refresh)
+    refresh()
 }
+createDisplay("doc1")

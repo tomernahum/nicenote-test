@@ -92,7 +92,7 @@ honoApp.get(
     (c) => {
         const { docId } = c.req.valid("param")
         const x = getAllDocOperations(docId)
-        console.log(x)
+        console.log("getAllDocOperations", docId, x)
         const binaryEncoded = encodeOperations(x)
         return new Response(binaryEncoded, {
             status: 200,
