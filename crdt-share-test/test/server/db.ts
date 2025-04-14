@@ -63,7 +63,13 @@ export function processSnapshot(
             const x = deleteOp.run(docId, lastUpdateRowToReplace)
             const y = insert.run(docId, snapshot)
 
-            console.log(x.changes, y.changes)
+            console.log(
+                "ran transaction",
+                "rows deleted:",
+                x.changes,
+                "rows inserted:",
+                y.changes
+            )
         }
     )
     processSnapshot(docId, snapshot, lastUpdateRowToReplace)

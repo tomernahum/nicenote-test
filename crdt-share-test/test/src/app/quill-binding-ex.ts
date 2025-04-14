@@ -206,11 +206,7 @@ async function createDisplay(docId: string) {
         mainKey: await getNonSecretHardCodedKeyForTesting(),
         validOldKeys: [],
     }
-    const provider = await createRemoteDocProvider(new Y.Doc(), {
-        remoteDocId: docId,
-        mergeInitialState: false,
-        encryptionParams,
-    })
+
     const serverInterface = await getProviderServerInterface(
         docId,
         encryptionParams

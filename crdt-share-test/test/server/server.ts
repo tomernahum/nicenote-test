@@ -66,7 +66,7 @@ io.on("connection", (socket) => {
             snapshot: Uint8Array,
             lastUpdateRowToReplace: number | BigInt
         ) => {
-            console.log("snapshot", docId, lastUpdateRowToReplace)
+            console.log(socket.id, docId, "snapshot", lastUpdateRowToReplace)
 
             if (lastUpdateRowToReplace === -1) {
                 // delete everything

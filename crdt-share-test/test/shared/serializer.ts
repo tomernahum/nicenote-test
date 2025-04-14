@@ -74,4 +74,3 @@ function test() {
     console.log(encodeOperations(sampleData))
     console.log(decodeOperations(encodeOperations(sampleData)))
 }
-test()
