@@ -16,7 +16,10 @@ import {
     generateSymmetricEncryptionKey,
     getNonSecretHardCodedKeyForTesting,
 } from "../2-crypto"
-import { getProviderServerInterface } from "../1-provider-server-interface"
+import {
+    getProviderServerInterface,
+    getProviderServerInterfaceNew,
+} from "../1-provider-server-interface"
 
 Quill.register("modules/cursors", QuillCursors)
 
@@ -207,31 +210,32 @@ async function createDisplay(docId: string) {
         validOldKeys: [],
     }
 
-    const serverInterface = await getProviderServerInterface(
+    const serverInterface = await getProviderServerInterfaceNew(
         docId,
         encryptionParams
     )
 
-    serverInterface.connectToDoc()
+    await serverInterface.connect()
 
     async function refresh() {
-        const remoteUpdates = await serverInterface.getRemoteUpdateList("all")
+        const remoteUpdates = await serverInterface.getRemoteUpdateList(true)
+        const docUpdates = remoteUpdates.filter((u) => u.bucket === "doc")
+        const awarenessUpdates = remoteUpdates.filter(
+            (u) => u.bucket === "awareness"
+        )
 
-        function stringifyUint8ArrayArray(array: Uint8Array[]) {
-            function stringifyUint8Array(arr: Uint8Array) {
-                const arrStr = btoa(String.fromCharCode(...arr))
-                return `${arr.byteLength} byte update (decrypted): ${arrStr}`
-            }
-
-            return array.map(stringifyUint8Array)
+        function stringifyUpdate(update: {
+            rowId: number
+            bucket: string
+            operation: Uint8Array
+        }) {
+            const arrStr = btoa(String.fromCharCode(...update.operation))
+            return `${update.rowId}: ${update.operation.byteLength} byte update (decrypted): ${arrStr}`
         }
-
         const stringifiedUpdates = JSON.stringify(
             {
-                docUpdates: stringifyUint8ArrayArray(remoteUpdates.docUpdates),
-                awarenessUpdates: stringifyUint8ArrayArray(
-                    remoteUpdates.awarenessUpdates
-                ),
+                docUpdates: docUpdates.map(stringifyUpdate),
+                awarenessUpdates: awarenessUpdates.map(stringifyUpdate),
             },
             null,
             2

@@ -1,5 +1,5 @@
 
-Next: make squashing more intelligent instead of every X seconds all clients at once, also stop duplicate snapshot from same clientr
+Next: make squashing more intelligent instead of every X seconds all clients at once
 
 --------------
 

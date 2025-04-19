@@ -78,16 +78,20 @@ io.on("connection", (socket) => {
                 docId,
                 "doing snapshot",
                 "lastToReplace: ",
-                lastUpdateRowToReplace,
-                "lastUpdateInDb: ",
-                getHighestIdForDoc(docId)
+                lastUpdateRowToReplace
+                // "lastUpdateInDb: ",
+                // getHighestIdForDoc(docId)
             )
             if (lastUpdateRowToReplace === -1) {
                 // delete everything
                 processSnapshot(docId, snapshot, Number.MAX_SAFE_INTEGER - 1)
                 return
             }
-            processSnapshot(docId, snapshot, lastUpdateRowToReplace)
+            const lastUpdateRow = processSnapshot(
+                docId,
+                snapshot,
+                lastUpdateRowToReplace
+            )
         }
     )
 })

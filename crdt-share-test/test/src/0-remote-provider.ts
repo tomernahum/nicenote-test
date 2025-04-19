@@ -137,7 +137,6 @@ export async function createRemoteDocProvider(
     const startTime = Date.now()
     setInterval(() => {
         if (true || sentUpdateCount >= 5) {
-            console.log(Date.now() - startTime, "doing snapshot!")
             // should be based on total document updates maybe (shouldn't be very hard)
             doSnapshot()
             sentUpdateCount = 0

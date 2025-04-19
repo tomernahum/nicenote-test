@@ -206,11 +206,10 @@ export function getProviderServerInterfaceNew(
         const encoded = encodeMultipleUpdatesAsOne(withoutRows)
         const encrypted = await encryptUpdate(encoded)
 
-        await server.applySnapshot(
-            docId,
-            encrypted,
+        const lastUpdateRow =
             lastUpdateRowToReplace ?? getHighestSeenRowIdFromCached()
-        )
+        console.log("broadcasting snapshot", lastUpdateRow, snapshot)
+        await server.applySnapshot(docId, encrypted, lastUpdateRow)
         //
     }
 

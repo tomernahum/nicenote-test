@@ -78,9 +78,10 @@ export function processSnapshot(
                 "rows inserted:",
                 insertRes.changes
             )
+            return insertRes.lastInsertRowid
         }
     )
-    processSnapshot(docId, snapshot, lastUpdateRowToReplace)
+    return processSnapshot(docId, snapshot, lastUpdateRowToReplace)
 }
 
 export function getHighestIdForDoc(docId: string) {
