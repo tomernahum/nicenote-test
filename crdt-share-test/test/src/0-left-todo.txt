@@ -1,11 +1,13 @@
 
-
+Next: make squashing more intelligent instead of every X seconds all clients at once, also stop duplicate snapshot from same clientr
 
 --------------
 
 - proper cryptography key stuff.
     - support multiple keys & while-running key rotation
     - write keys
+maybe: writer id or writer key id recorded in operation. later may add custom resolving crdt-like which takes this into account
+    for now plan was to have one shared write-key. we could give each writer their own key per document = almost same as identity 
 
 - error handling down to user (eg max server message size)
 - clean up console logs
@@ -26,6 +28,10 @@ Maybe:
 - delete/wipe doc functionality? (you can just squash empty doc in prod and delete from sql viewer in dev though)
 - maybe deprecate connect to doc flow in 2-server-interface, since we want to fetch it before connecting to socket part
 - or not. it's possible I got confused thinking that http is faster than spinning up websocket.
+
+later: make buckets dynamic
+& add other crdt libraries / custom (loro tree & reducer-based)
+
 --
 
 

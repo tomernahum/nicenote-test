@@ -219,8 +219,8 @@ async function createDisplay(docId: string) {
 
         function stringifyUint8ArrayArray(array: Uint8Array[]) {
             function stringifyUint8Array(arr: Uint8Array) {
-                // return JSON.stringify(Array.from(arr))
-                return `${arr.byteLength} byte update (decrypted)`
+                const arrStr = btoa(String.fromCharCode(...arr))
+                return `${arr.byteLength} byte update (decrypted): ${arrStr}`
             }
 
             return array.map(stringifyUint8Array)

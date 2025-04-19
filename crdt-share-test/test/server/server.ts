@@ -1,5 +1,10 @@
 import { Server } from "socket.io"
-import { addDocOperation, getAllDocOperations, processSnapshot } from "./db"
+import {
+    addDocOperation,
+    getAllDocOperations,
+    getHighestIdForDoc,
+    processSnapshot,
+} from "./db"
 import { Hono } from "hono"
 import { serve } from "@hono/node-server"
 import { validator } from "hono/validator"
@@ -68,7 +73,15 @@ io.on("connection", (socket) => {
             snapshot: Uint8Array,
             lastUpdateRowToReplace: number | BigInt
         ) => {
-            console.log(socket.id, docId, "snapshot", lastUpdateRowToReplace)
+            console.log(
+                socket.id,
+                docId,
+                "doing snapshot",
+                "lastToReplace: ",
+                lastUpdateRowToReplace,
+                "lastUpdateInDb: ",
+                getHighestIdForDoc(docId)
+            )
             if (lastUpdateRowToReplace === -1) {
                 // delete everything
                 processSnapshot(docId, snapshot, Number.MAX_SAFE_INTEGER - 1)

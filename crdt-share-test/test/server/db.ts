@@ -82,3 +82,11 @@ export function processSnapshot(
     )
     processSnapshot(docId, snapshot, lastUpdateRowToReplace)
 }
+
+export function getHighestIdForDoc(docId: string) {
+    const select = db.prepare(
+        `SELECT MAX(id) FROM doc_operations WHERE doc_id = ?`
+    )
+    const result = select.get(docId)
+    return result ? result["MAX(id)"] : null
+}
