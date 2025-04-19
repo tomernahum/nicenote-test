@@ -46,12 +46,11 @@ export function getServerInterface() {
         addUpdate: (docId: string, update: EncryptedUpdate) => {
             socket.emit("addUpdate", docId, update)
         },
+
+        /** NOTE: this only supports one listener (currently) */
         subscribeToRemoteUpdates: (
             docId: string,
-            callback: (
-                update: EncryptedUpdate,
-                updateRow?: number | BigInt
-            ) => void
+            callback: (update: EncryptedUpdate, updateRow: number) => void
         ) => {
             socket.emit("startListeningToDoc", docId)
             socket.on(
@@ -101,7 +100,7 @@ export function getServerInterface() {
         applySnapshot: async (
             docId: string,
             snapshot: Uint8Array,
-            lastUpdateRowToReplace: number | BigInt
+            lastUpdateRowToReplace: number
         ) => {
             socket.emit(
                 "applySnapshot",

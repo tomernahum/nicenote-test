@@ -7,7 +7,7 @@ export interface ServerToClientEvents {
     newUpdate: (
         docId: string,
         update: Uint8Array,
-        updateRow: number | BigInt
+        updateRow: number // | BigInt
     ) => void
 }
 export interface ClientToServerEvents {
@@ -17,7 +17,7 @@ export interface ClientToServerEvents {
     applySnapshot: (
         docId: string,
         snapshot: Uint8Array,
-        lastUpdateRowToReplace: number | BigInt
+        lastUpdateRowToReplace: number // | BigInt
     ) => void
 }
 export interface InterServerEvents {}

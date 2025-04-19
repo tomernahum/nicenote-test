@@ -89,10 +89,12 @@ export async function createRemoteDocProvider(
         applyAwarenessUpdate(awareness, newItem, yDoc)
     })
     // subscribe to local awareness updates and broadcast them to the server
+    let sentUpdateCount = 0
     awareness.on("update", ({ added, updated, removed }) => {
         const changedClients = added.concat(updated).concat(removed)
         const encodedUpdate = encodeAwarenessUpdate(awareness, changedClients)
         console.log("detected awareness update, broadcasting")
+        sentUpdateCount += 1
         broadcastUpdate("awareness", encodedUpdate)
     })
 
@@ -118,7 +120,12 @@ export async function createRemoteDocProvider(
             { bucket: "awareness", update: yAwarenessSnapshot },
         ])
     }
-    setInterval(doSnapshot, 5000) // TODO: make this smarter
+    setInterval(()=>{
+        if (sentUpdateCount >= 5) { // should be based on total document updates maybe (shouldn't be very hard)
+            doSnapshot()
+            sentUpdateCount = 0
+        }
+    }, 5000) // TODO: make this smarter
 
     console.log("initialized doc")
 
