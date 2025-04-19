@@ -1,14 +1,17 @@
-- Squash/snapshot Functionality!
-- delete/wipe doc functionality ()
+
+
+
+--------------
 
 - proper cryptography key stuff.
     - support multiple keys & while-running key rotation
     - write keys
 
 - error handling down to user (eg max server message size)
+- clean up console logs
 
-- maybe deprecate connect to doc flow, since we want to fetch it before connecting to socket part
-- or not. it's possible I got confused thinking that http is faster than spinning up websocket.
+- deploy for easier cross-device testing
+
 
 - batching of updates to mask frequency of them from server
 
@@ -18,6 +21,11 @@
 
 
 - awareness is buggy sometimes!
+
+Maybe:
+- delete/wipe doc functionality? (you can just squash empty doc in prod and delete from sql viewer in dev though)
+- maybe deprecate connect to doc flow in 2-server-interface, since we want to fetch it before connecting to socket part
+- or not. it's possible I got confused thinking that http is faster than spinning up websocket.
 --
 
 

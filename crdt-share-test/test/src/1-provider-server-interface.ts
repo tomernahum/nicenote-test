@@ -180,14 +180,18 @@ export function getProviderServerInterfaceNew(
     async function refreshCache() {
         const encryptedUpdates = await server.getRemoteUpdateList(docId)
 
-        receivedUpdatesCache = []
-        encryptedUpdates.forEach(async (update) => {
-            const decodedUpdates = await decryptAndDecodeUpdate({
+        const decodedUpdatesPromises = encryptedUpdates.map((update) =>
+            decryptAndDecodeUpdate({
                 rowId: update.id,
                 operation: update.operation,
             })
-            receivedUpdatesCache.push(...decodedUpdates)
-        })
+        )
+
+        const decodedUpdates = (
+            await Promise.all(decodedUpdatesPromises)
+        ).flat()
+
+        receivedUpdatesCache = decodedUpdates
     }
     // --
 
@@ -212,10 +216,11 @@ export function getProviderServerInterfaceNew(
 
     return {
         connect: async function () {
+            console.log("1- connecting to doc server")
             await server.connect(docId)
 
             // initialize memory cache
-            refreshCache()
+            await refreshCache()
             await server.subscribeToRemoteUpdates(
                 docId,
                 async (update, updateRow) => {
@@ -232,6 +237,10 @@ export function getProviderServerInterfaceNew(
                     })
                 }
             )
+            // console.log("1- finished connecting to doc server", {
+            //     length: receivedUpdatesCache.length,
+            //     receivedUpdatesCache,
+            // })
         },
         disconnect: async function () {
             server.disconnect()

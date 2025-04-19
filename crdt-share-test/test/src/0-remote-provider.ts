@@ -54,7 +54,6 @@ export async function createRemoteDocProvider(
         // todo: show error message to user etc
         throw error
     })
-    console.log("connected to doc")
     const remoteUpdates = await getRemoteUpdateList()
     const remoteDocUpdates = remoteUpdates
         .filter((update) => update.bucket === "doc")
@@ -62,6 +61,8 @@ export async function createRemoteDocProvider(
     const remoteAwarenessUpdates = remoteUpdates
         .filter((update) => update.bucket === "awareness")
         .map((update) => update.operation)
+
+    console.log("connected to doc", remoteUpdates)
 
     // connect to the local yDoc
     const yDocProvider = createBaseProvider(yDoc, handleBroadcastUpdate)

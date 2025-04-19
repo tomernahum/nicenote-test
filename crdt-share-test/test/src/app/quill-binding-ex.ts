@@ -162,7 +162,7 @@ async function createEditor(elementSelector: string, remoteDocId: string) {
         },
     })
 
-    if (false && (elementSelector === "#editor1" || false)) {
+    if (false && elementSelector === "#editor1") {
         yDoc.on("update", (update) => {
             updatesCount++
             console.log("updateCount", updatesCount)
