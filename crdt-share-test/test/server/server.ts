@@ -56,7 +56,9 @@ io.on("connection", (socket) => {
         console.log(socket.id, docId, "addUpdate")
         const id = addDocOperation(docId, update)
         // notify other clients listening to this doc
-        socket.to(docId).emit("newUpdate", docId, update, id)
+        // socket.to(docId).emit("newUpdate", docId, update, id)
+        // notify this and other clients listening to this doc
+        io.to(docId).emit("newUpdate", docId, update, id)
     })
 
     socket.on(

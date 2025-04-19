@@ -16,6 +16,7 @@ import {
 import {
     EncryptionParams,
     getProviderServerInterface,
+    getProviderServerInterfaceNew,
 } from "./1-provider-server-interface"
 
 type YUpdate = Uint8Array
@@ -35,23 +36,32 @@ export async function createRemoteDocProvider(
     // todo maybe: rewrite params of func to be more like other providers y-websocket (url, roomname, doc) // may also need secret key params
 ) {
     const {
-        connectToDoc,
+        connect,
+        disconnect,
         getRemoteUpdateList,
         subscribeToRemoteUpdates,
         broadcastUpdate,
-        applySnapshot,
-    } = getProviderServerInterface(params.remoteDocId, params.encryptionParams)
+        broadcastSnapshot,
+        // } = getProviderServerInterface(params.remoteDocId, params.encryptionParams)
+    } = getProviderServerInterfaceNew(
+        params.remoteDocId,
+        params.encryptionParams
+    )
 
     // "connect to the server doc"
-    await connectToDoc()
-    console.log("connected to doc")
-    const remoteUpdates = await getRemoteUpdateList("all").catch((error) => {
-        console.warn("Failed to get remote updates for the yjs doc:", error)
+    await connect().catch((error) => {
+        console.warn("Failed to connect to the remote doc:", error)
         // todo: show error message to user etc
         throw error
     })
-    const remoteDocUpdates = remoteUpdates.docUpdates
-    const remoteAwarenessUpdates = remoteUpdates.awarenessUpdates
+    console.log("connected to doc")
+    const remoteUpdates = await getRemoteUpdateList()
+    const remoteDocUpdates = remoteUpdates
+        .filter((update) => update.bucket === "doc")
+        .map((update) => update.update)
+    const remoteAwarenessUpdates = remoteUpdates
+        .filter((update) => update.bucket === "awareness")
+        .map((update) => update.update)
 
     // connect to the local yDoc
     const yDocProvider = createBaseProvider(yDoc, handleBroadcastUpdate)
@@ -66,14 +76,15 @@ export async function createRemoteDocProvider(
     }
 
     // Listen to new updates from the "server", and apply them to the local doc
-    subscribeToRemoteUpdates("doc", (newItem) => {
-        yDocProvider.applyRemoteUpdate(newItem)
+    subscribeToRemoteUpdates((newItem) => {
+        if (newItem.bucket !== "doc") return
+        yDocProvider.applyRemoteUpdate(newItem.update)
     })
 
     // broadcast local updates to the server. called by yDocProvider
     function handleBroadcastUpdate(update: Uint8Array) {
         console.log("detected doc update, broadcasting")
-        broadcastUpdate("doc", update)
+        broadcastUpdate({ bucket: "doc", update: update })
     }
 
     // ---- Awareness Interaction -----
@@ -85,8 +96,9 @@ export async function createRemoteDocProvider(
         // applyAwarenessUpdate(awareness, update, "provider")
     })
     // subscribe to remote awareness updates and apply them to the local awareness
-    subscribeToRemoteUpdates("awareness", (newItem) => {
-        applyAwarenessUpdate(awareness, newItem, yDoc)
+    subscribeToRemoteUpdates((newItem) => {
+        if (newItem.bucket !== "awareness") return
+        applyAwarenessUpdate(awareness, newItem.update, yDoc)
     })
     // subscribe to local awareness updates and broadcast them to the server
     let sentUpdateCount = 0
@@ -95,7 +107,7 @@ export async function createRemoteDocProvider(
         const encodedUpdate = encodeAwarenessUpdate(awareness, changedClients)
         console.log("detected awareness update, broadcasting")
         sentUpdateCount += 1
-        broadcastUpdate("awareness", encodedUpdate)
+        broadcastUpdate({ bucket: "awareness", update: encodedUpdate })
     })
 
     // remove ourselves from the remote awareness when we close the window (this should be done automatically after a while anyways, but this speeds it up)
@@ -115,13 +127,15 @@ export async function createRemoteDocProvider(
             awareness,
             awarenessClients
         )
-        await applySnapshot([
+        await broadcastSnapshot([
             { bucket: "doc", update: yDocSnapshot },
             { bucket: "awareness", update: yAwarenessSnapshot },
         ])
     }
-    setInterval(()=>{
-        if (sentUpdateCount >= 5) { // should be based on total document updates maybe (shouldn't be very hard)
+    setInterval(() => {
+        if (true || sentUpdateCount >= 5) {
+            console.log("doing snapshot!")
+            // should be based on total document updates maybe (shouldn't be very hard)
             doSnapshot()
             sentUpdateCount = 0
         }

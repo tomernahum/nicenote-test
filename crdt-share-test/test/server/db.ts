@@ -30,6 +30,10 @@ export function addDocOperation(docId: string, operation: Uint8Array) {
         `INSERT INTO doc_operations (doc_id, operation) VALUES (?, ?)`
     )
     const x = insert.run(docId, operation)
+
+    if (typeof x.lastInsertRowid !== "number") {
+        throw new Error("DocId was not a number! may have been a bigint!")
+    }
     return x.lastInsertRowid
     console.log("added", x)
 }

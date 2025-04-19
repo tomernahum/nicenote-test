@@ -1,11 +1,6 @@
 import { decodeList, encodeList } from "../shared/binary-encoding-helpers"
-import {
-    getRemoteUpdateList,
-    subscribeToRemoteUpdates,
-} from "./1--mock-server-interface"
 import { decryptData, encryptData } from "./2-crypto"
 import { getServerInterface } from "./2-server-interface-hono-socketio"
-import { ObservableList } from "./utils"
 import { promiseAllSettled, tryCatch } from "./utils2"
 
 type YUpdate = Uint8Array
@@ -144,6 +139,7 @@ export function getProviderServerInterfaceNew(
             return []
         }
     }
+    // TODO maybe: encrypt and encode multi updates into one
 
     const server = getServerInterface()
 
@@ -153,10 +149,20 @@ export function getProviderServerInterfaceNew(
         rowId: number // row id of the update on the server
         update: Uint8Array
     }
+
+    type UpdateOptRow = {
+        rowId?: number
+        bucket: Bucket
+        update: Uint8Array
+    }
+    let uorTypeCheckHelper: UpdateOptRow = {} as UpdateOptRow
+    uorTypeCheckHelper satisfies Omit<Update, "rowId">
+
     let receivedUpdatesCache: Update[] = []
     let subscriberCallbacks: ((update: Update) => void)[] = []
 
     function getHighestSeenRowIdFromCached() {
+        // TODO: replace with highest row id seen where we have seen all sequential updates up to that row
         if (receivedUpdatesCache.length == 0) {
             throw "length was 0"
         }
@@ -184,15 +190,9 @@ export function getProviderServerInterfaceNew(
     // --
 
     async function broadcastSnapshot(
-        snapshot: {
-            rowId?: number
-            bucket: Bucket
-            update: Uint8Array
-        }[],
-        lastUpdateRowToReplace: number
+        snapshot: UpdateOptRow[],
+        lastUpdateRowToReplace?: number
     ) {
-        snapshot satisfies Omit<Update, "rowId">[]
-
         const withoutRows = snapshot.map((u) => ({
             bucket: u.bucket,
             update: u.update,
@@ -200,7 +200,12 @@ export function getProviderServerInterfaceNew(
         const encoded = encodeMultipleUpdatesAsOne(withoutRows)
         const encrypted = await encryptUpdate(encoded)
 
-        await server.applySnapshot(docId, encrypted, lastUpdateRowToReplace)
+        await server.applySnapshot(
+            docId,
+            encrypted,
+            lastUpdateRowToReplace ?? getHighestSeenRowIdFromCached()
+        )
+        //
     }
 
     return {
@@ -245,21 +250,23 @@ export function getProviderServerInterfaceNew(
             }
         },
 
-        broadcastUpdate: async function (
-            bucket: Bucket,
-            operation: Uint8Array
-        ) {
+        broadcastUpdate: async function (update: UpdateOptRow) {
             // TODO: maybe batch updates
             // TODO: make sure we are handling update rejection & send failure
             try {
-                const encoded = encodeOneUpdateMessage(bucket, operation)
+                const encoded = encodeOneUpdateMessage(
+                    update.bucket,
+                    update.update
+                )
                 const encrypted = await encryptUpdate(encoded)
-                console.log("update to broadcast:", bucket, {
-                    operation,
+                console.log("update to broadcast:", {
+                    plainText: update,
                     encoded,
                     encrypted,
                 })
                 await server.addUpdate(docId, encrypted)
+
+                // on success hopefully server will notify us!
             } catch (error) {
                 console.error("Failed to broadcast update:", error)
                 // TODO: handle error or explicit server rejection (current server never rejects)
@@ -267,6 +274,7 @@ export function getProviderServerInterfaceNew(
                 // undoing the update in 0-remote-provider (+ allowing user to be shown notif that something was rejected),
                 //      or if we can't we can periodically rerender from only confirmed updates (happens when user reloads the page already)
                 //      or we can just detect the error/divergence, tell the user and ask them to reload for proper access
+                // ie just throw the error and catch it in the provider
                 // or by retrying it (not sure which file is best for that),    or something else
                 // or if it is because it's too big for one message, maybe split it into multiple messages
                 throw error

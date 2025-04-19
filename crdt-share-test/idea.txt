@@ -1,0 +1,19 @@
+How to create a "CRDT"
+
+take a set of reducer functions
+
+create an operation out of  {
+    reducer,
+    args,
+    
+    something to determine order (lamport counter?),
+    id (to skip repeated updates)
+}
+
+to get the state from operations, first remove duplicates, then order them, then apply them one at a time to starting state in order.
+this way the operations can come in in any order and be repeated, but whoever has the same operations has the same state regardless of order
+
+o4-mini-high says this is actually a crdt... on one prompt, on another it says it is not. I think it serves the same purpose
+
+
+I plan to implement this later as another optional "bucket" in the provider (may make buckets arbitrary)

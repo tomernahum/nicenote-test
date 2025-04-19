@@ -10,7 +10,7 @@ import { WebsocketProvider } from "y-websocket"
 import "quill/dist/quill.snow.css"
 // import { createRemoteDocProvider, setLatency } from "./local-provider"
 import { createRemoteDocProvider } from "../0-remote-provider"
-import { setLatency } from "../1--mock-server-interface"
+// import { setLatency } from "../1--mock-server-interface"
 import { getRandomAnimal, getRandomColor } from "../utils"
 import {
     generateSymmetricEncryptionKey,
@@ -41,7 +41,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 const latencyInput = document.getElementById("latency") as HTMLInputElement
 latencyInput.addEventListener("input", (e) => {
     const latency = parseInt(latencyInput.value)
-    setLatency("doc1", latency)
+    // setLatency("doc1", latency)
 })
 
 function createQuillEditor(elementSelector: string) {
