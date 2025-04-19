@@ -58,10 +58,10 @@ export async function createRemoteDocProvider(
     const remoteUpdates = await getRemoteUpdateList()
     const remoteDocUpdates = remoteUpdates
         .filter((update) => update.bucket === "doc")
-        .map((update) => update.update)
+        .map((update) => update.operation)
     const remoteAwarenessUpdates = remoteUpdates
         .filter((update) => update.bucket === "awareness")
-        .map((update) => update.update)
+        .map((update) => update.operation)
 
     // connect to the local yDoc
     const yDocProvider = createBaseProvider(yDoc, handleBroadcastUpdate)
@@ -78,13 +78,13 @@ export async function createRemoteDocProvider(
     // Listen to new updates from the "server", and apply them to the local doc
     subscribeToRemoteUpdates((newItem) => {
         if (newItem.bucket !== "doc") return
-        yDocProvider.applyRemoteUpdate(newItem.update)
+        yDocProvider.applyRemoteUpdate(newItem.operation)
     })
 
     // broadcast local updates to the server. called by yDocProvider
     function handleBroadcastUpdate(update: Uint8Array) {
         console.log("detected doc update, broadcasting")
-        broadcastUpdate({ bucket: "doc", update: update })
+        broadcastUpdate({ bucket: "doc", operation: update })
     }
 
     // ---- Awareness Interaction -----
@@ -98,7 +98,7 @@ export async function createRemoteDocProvider(
     // subscribe to remote awareness updates and apply them to the local awareness
     subscribeToRemoteUpdates((newItem) => {
         if (newItem.bucket !== "awareness") return
-        applyAwarenessUpdate(awareness, newItem.update, yDoc)
+        applyAwarenessUpdate(awareness, newItem.operation, yDoc)
     })
     // subscribe to local awareness updates and broadcast them to the server
     let sentUpdateCount = 0
@@ -107,7 +107,7 @@ export async function createRemoteDocProvider(
         const encodedUpdate = encodeAwarenessUpdate(awareness, changedClients)
         console.log("detected awareness update, broadcasting")
         sentUpdateCount += 1
-        broadcastUpdate({ bucket: "awareness", update: encodedUpdate })
+        broadcastUpdate({ bucket: "awareness", operation: encodedUpdate })
     })
 
     // remove ourselves from the remote awareness when we close the window (this should be done automatically after a while anyways, but this speeds it up)
@@ -128,8 +128,8 @@ export async function createRemoteDocProvider(
             awarenessClients
         )
         await broadcastSnapshot([
-            { bucket: "doc", update: yDocSnapshot },
-            { bucket: "awareness", update: yAwarenessSnapshot },
+            { bucket: "doc", operation: yDocSnapshot },
+            { bucket: "awareness", operation: yAwarenessSnapshot },
         ])
     }
     setInterval(() => {

@@ -125,8 +125,9 @@ export function getProviderServerInterfaceNew(
         try {
             const decrypted = await decryptUpdate(update.operation)
             const decoded = decodeMultiUpdate(decrypted)
-            const updates = decoded.map((d) => ({
-                ...d,
+            const updates: Update[] = decoded.map((u) => ({
+                bucket: u.bucket,
+                operation: u.update,
                 rowId: update.rowId,
             }))
 
@@ -147,13 +148,13 @@ export function getProviderServerInterfaceNew(
     type Update = {
         bucket: string
         rowId: number // row id of the update on the server
-        update: Uint8Array
+        operation: Uint8Array
     }
 
     type UpdateOptRow = {
         rowId?: number
         bucket: Bucket
-        update: Uint8Array
+        operation: Uint8Array
     }
     let uorTypeCheckHelper: UpdateOptRow = {} as UpdateOptRow
     uorTypeCheckHelper satisfies Omit<Update, "rowId">
@@ -162,7 +163,8 @@ export function getProviderServerInterfaceNew(
     let subscriberCallbacks: ((update: Update) => void)[] = []
 
     function getHighestSeenRowIdFromCached() {
-        // TODO: replace with highest row id seen where we have seen all sequential updates up to that row
+        // TODO: replace with highest row id seen where we have seen all sequential updates up to that row.
+        // this would solve for case where we heard about updates out of order (not the same order they were committed to the server db)
         if (receivedUpdatesCache.length == 0) {
             throw "length was 0"
         }
@@ -195,7 +197,7 @@ export function getProviderServerInterfaceNew(
     ) {
         const withoutRows = snapshot.map((u) => ({
             bucket: u.bucket,
-            update: u.update,
+            update: u.operation,
         }))
         const encoded = encodeMultipleUpdatesAsOne(withoutRows)
         const encrypted = await encryptUpdate(encoded)
@@ -256,7 +258,7 @@ export function getProviderServerInterfaceNew(
             try {
                 const encoded = encodeOneUpdateMessage(
                     update.bucket,
-                    update.update
+                    update.operation
                 )
                 const encrypted = await encryptUpdate(encoded)
                 console.log("update to broadcast:", {
