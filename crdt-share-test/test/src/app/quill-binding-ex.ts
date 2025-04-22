@@ -24,10 +24,10 @@ import {
 Quill.register("modules/cursors", QuillCursors)
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
-  <div>
+  <!-- <div>
     <label for="latency">Latency (ms):</label>
     <input type="number" id="latency" value="500" />
-  </div>
+  </div> -->
   <br />
 
   <div id="editors">
@@ -41,11 +41,11 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   </div>
 `
 // latency slider
-const latencyInput = document.getElementById("latency") as HTMLInputElement
-latencyInput.addEventListener("input", (e) => {
-    const latency = parseInt(latencyInput.value)
-    // setLatency("doc1", latency)
-})
+// const latencyInput = document.getElementById("latency") as HTMLInputElement
+// latencyInput.addEventListener("input", (e) => {
+//     const latency = parseInt(latencyInput.value)
+//     // setLatency("doc1", latency)
+// })
 
 function createQuillEditor(elementSelector: string) {
     const toolbar1 = [
@@ -163,6 +163,14 @@ async function createEditor(elementSelector: string, remoteDocId: string) {
             mainKey: await getNonSecretHardCodedKeyForTesting(),
             validOldKeys: [],
         },
+    }).catch((error) => {
+        console.error("Failed to create remote doc provider!", error)
+        if (error instanceof Error) {
+            if (error.message.includes("connect failed")) {
+                alert("sorry you may be offline")
+            }
+        }
+        throw error
     })
 
     if (false && elementSelector === "#editor1") {

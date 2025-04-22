@@ -16,23 +16,24 @@ export function getServerInterface() {
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> =
         io(SERVER_URL)
     return {
-        // may likely deprecate this flow of connecting first
+        // may deprecate this flow of connecting first idk
         connect: async (docId: string) => {
             // todo ping hono?
             socket.connect()
-            socket.on("connect", () => {
-                console.log(Date.now(), "Connected to socket.io server")
+            return new Promise<void>((resolve, reject) => {
+                socket.on("connect", () => {
+                    resolve()
+                })
+                socket.on("connect_error", (error) => {
+                    console.error(
+                        "Failed to connect to socket.io server:",
+                        error
+                    )
+                    reject(
+                        "Failed to connect to socket.io server: connect_error"
+                    )
+                })
             })
-            return
-            // return new Promise<void>((resolve, reject) => {
-            //     socket.on("connect", () => {
-            //         resolve()
-            //     })
-            //     socket.on("connect_error", (error) => {
-            //         console.error("Failed to connect to server:", error)
-            //         reject("Failed to connect to server: connect_error")
-            //     })
-            // })
         },
         disconnect: () => {
             socket.disconnect()

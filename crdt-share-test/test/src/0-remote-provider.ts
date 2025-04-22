@@ -52,7 +52,7 @@ export async function createRemoteDocProvider(
     await connect().catch((error) => {
         console.warn("!! Failed to connect to the remote doc:", error)
         // todo: show error message to user etc
-        throw error
+        throw new Error("connect failed", { cause: error })
     })
     const remoteUpdates = await getRemoteUpdateList()
     const remoteDocUpdates = remoteUpdates
