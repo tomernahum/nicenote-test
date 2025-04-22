@@ -11,7 +11,7 @@ on the server-side (/server) server.ts is the main file, which calls db.ts which
 
 0-remote-provider acts as the entry point of a yjs network provider. it connects to the yDoc, creates awareness structure for it, and handles detecting outgoing updates and applying incoming updates
 
-1-provider-server-interface abstracts away encoding and cryptography from the main 0-remote-provider. it calls crypto for crypto stuff and 
+1-provider-server-interface abstracts away encoding and cryptography from the main 0-remote-provider. it calls crypto for crypto stuff and 2-server-interface for server stuff. It also wraps 2-server-interface with in-memory caching () and more tailored functions
     - may be a bit messy atow
 
 2-server-interface is designed to be minimal and swappable in case you want to use a different server protocol. It's functions take in already encrypted data and relay it to/from the server.
