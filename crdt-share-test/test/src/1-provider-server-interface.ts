@@ -103,7 +103,7 @@ function createEncryptionLogic(
     }
 }
 
-export function getProviderServerInterfaceNew(
+export function getProviderServerInterface(
     docId: string,
     encryptionParams: EncryptionParams
 ) {
@@ -325,7 +325,7 @@ export function getProviderServerInterfaceNew(
 /** Wraps server interface with encryption and decryption
  *  maybe this should be rolled into 0-remote-provider, lots of unnecessary decoupling tbh makes you have to write the same code like 4 times
  */
-export function getProviderServerInterface(
+export function getProviderServerInterfaceOld(
     docId: string,
     encryptionParams: EncryptionParams
 ) {

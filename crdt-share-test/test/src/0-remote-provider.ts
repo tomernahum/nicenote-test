@@ -16,7 +16,6 @@ import {
 import {
     EncryptionParams,
     getProviderServerInterface,
-    getProviderServerInterfaceNew,
 } from "./1-provider-server-interface"
 
 type YUpdate = Uint8Array
@@ -43,10 +42,7 @@ export async function createRemoteDocProvider(
         broadcastUpdate,
         broadcastSnapshot,
         // } = getProviderServerInterface(params.remoteDocId, params.encryptionParams)
-    } = getProviderServerInterfaceNew(
-        params.remoteDocId,
-        params.encryptionParams
-    )
+    } = getProviderServerInterface(params.remoteDocId, params.encryptionParams)
 
     // "connect to the server doc"
     await connect().catch((error) => {
@@ -140,6 +136,8 @@ export async function createRemoteDocProvider(
 
     setTimeout(() => {
         setInterval(() => {
+            // const totalDocUpdates = ""
+
             if (sentUpdateCount >= 5) {
                 doSnapshot()
                 sentUpdateCount = 0
