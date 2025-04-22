@@ -1,0 +1,21 @@
+
+This is an e2ee provider for yjs
+
+consumer code is true entry point: app/quill--binding-ex.ts
+application code calls 0-remote-provider
+0-remote-provider calls 1-provider-server-interface
+1-provider-server-interface calls crypto + 2-server-interface
+2-server-interface calls the server itself. 
+on the server-side (/server) server.ts is the main file, which calls db.ts which calls better-sqlite3 library
+
+
+0-remote-provider acts as the entry point of a yjs network provider. it connects to the yDoc, creates awareness structure for it, and handles detecting outgoing updates and applying incoming updates
+
+1-provider-server-interface abstracts away encoding and cryptography from the main 0-remote-provider. it calls crypto for crypto stuff and 
+    - may be a bit messy atow
+
+2-server-interface is designed to be minimal and swappable in case you want to use a different server protocol. It's functions take in already encrypted data and relay it to/from the server.
+    - when I publish this whole thing on npm, I will let you pass in a custom 2-server-interface when creating the provider, and have it be a separate package
+
+
+
