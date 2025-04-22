@@ -50,7 +50,7 @@ export async function createRemoteDocProvider(
 
     // "connect to the server doc"
     await connect().catch((error) => {
-        console.warn("Failed to connect to the remote doc:", error)
+        console.warn("!! Failed to connect to the remote doc:", error)
         // todo: show error message to user etc
         throw error
     })
@@ -62,6 +62,7 @@ export async function createRemoteDocProvider(
         .filter((update) => update.bucket === "awareness")
         .map((update) => update.operation)
 
+    let sentUpdateCount = 0
     console.log("connected to doc", remoteUpdates)
 
     // connect to the local yDoc
@@ -86,6 +87,7 @@ export async function createRemoteDocProvider(
     function handleBroadcastUpdate(update: Uint8Array) {
         console.log("detected doc update, broadcasting")
         broadcastUpdate({ bucket: "doc", operation: update })
+        sentUpdateCount += 1
     }
 
     // ---- Awareness Interaction -----
@@ -102,7 +104,6 @@ export async function createRemoteDocProvider(
         applyAwarenessUpdate(awareness, newItem.operation, yDoc)
     })
     // subscribe to local awareness updates and broadcast them to the server
-    let sentUpdateCount = 0
     awareness.on("update", ({ added, updated, removed }) => {
         const changedClients = added.concat(updated).concat(removed)
         const encodedUpdate = encodeAwarenessUpdate(awareness, changedClients)
@@ -128,26 +129,34 @@ export async function createRemoteDocProvider(
             awareness,
             awarenessClients
         )
-        await broadcastSnapshot([
-            { bucket: "doc", operation: yDocSnapshot },
-            { bucket: "awareness", operation: yAwarenessSnapshot },
-        ])
+        await broadcastSnapshot(
+            [
+                { bucket: "doc", operation: yDocSnapshot },
+                { bucket: "awareness", operation: yAwarenessSnapshot },
+            ],
+            "auto"
+        )
     }
 
-    const startTime = Date.now()
-    setInterval(() => {
-        if (true || sentUpdateCount >= 5) {
-            // should be based on total document updates maybe (shouldn't be very hard)
-            doSnapshot()
-            sentUpdateCount = 0
-        }
-    }, 5000) // TODO: make this smarter
+    setTimeout(() => {
+        setInterval(() => {
+            if (sentUpdateCount >= 5) {
+                doSnapshot()
+                sentUpdateCount = 0
+            }
+        }, 5000) // TODO: make this smarter
+    }, Math.random() * 5000)
 
     console.log("initialized doc")
 
     return {
         awareness,
-        _internal: {},
+        disconnect() {
+            disconnect()
+        },
+        internal: {
+            sentUpdateCount,
+        },
     }
 }
 

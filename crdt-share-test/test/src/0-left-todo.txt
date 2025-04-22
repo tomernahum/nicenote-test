@@ -1,5 +1,16 @@
 
-Next: make squashing more intelligent instead of every X seconds all clients at once
+Next: make squashing more intelligent instead of every X seconds all clients at once + intelligent rejection on server maybe
+
+Next: Find way to test connection disruptions! devtool do not work easily with websockets
+
+
+- BUG: entire page still load and still "successfully" get server state just outdated if page loaded while "offline" on firefox
+    - then on reconnect it doesn't receive updates of other party while disconnected, and sometimes forever too, but still can send updates
+    Ignore this:
+            - BUG: if a client temporarily loses connection their updates seem to go through to server but not pushed to other client? Can't reproduce
+            maybe true idk : if client starts off offline and reconnects, they don't receive new updates they needed while they were offline
+                - should maybe do periodic refresh regardless
+                - but also directly solve this
 
 --------------
 
@@ -18,11 +29,17 @@ maybe: writer id or writer key id recorded in operation. later may add custom re
 - batching of updates to mask frequency of them from server
 
 
+
+
+
 - server: think about spam prevention story maybe? & integration with a proper authed / customized extendible server (besides cryptography auth)
     - maybe turn backend into library or something idk
 
+- make sure it is as bug free as possible
 
-- awareness is buggy sometimes!
+- restructure folders and stuff
+
+- publish this
 
 Maybe:
 - delete/wipe doc functionality? (you can just squash empty doc in prod and delete from sql viewer in dev though)

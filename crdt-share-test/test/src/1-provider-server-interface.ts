@@ -197,7 +197,7 @@ export function getProviderServerInterfaceNew(
 
     async function broadcastSnapshot(
         snapshot: UpdateOptRow[],
-        lastUpdateRowToReplace?: number
+        lastUpdateRowToReplace: number | "auto"
     ) {
         const withoutRows = snapshot.map((u) => ({
             bucket: u.bucket,
@@ -207,7 +207,9 @@ export function getProviderServerInterfaceNew(
         const encrypted = await encryptUpdate(encoded)
 
         const lastUpdateRow =
-            lastUpdateRowToReplace ?? getHighestSeenRowIdFromCached()
+            lastUpdateRowToReplace === "auto"
+                ? getHighestSeenRowIdFromCached()
+                : lastUpdateRowToReplace
         console.log("broadcasting snapshot", lastUpdateRow, snapshot)
         await server.applySnapshot(docId, encrypted, lastUpdateRow)
         //
@@ -251,6 +253,7 @@ export function getProviderServerInterfaceNew(
             }
             return receivedUpdatesCache
         },
+        refreshCache,
         subscribeToRemoteUpdates(callback: (update: Update) => void) {
             subscriberCallbacks.push(callback)
             return () => {
@@ -293,6 +296,7 @@ export function getProviderServerInterfaceNew(
 
         /**
          * Manually do a snapshot
+         * Probably easier to safely call createSnapshot instead
          * Snapshot is made out of multiple updates (will be encrypted together and sent as one update to the server),
          * anything not captured in the snapshot will be lost
          * recommended: one update per bucket
@@ -303,8 +307,12 @@ export function getProviderServerInterfaceNew(
         async createSnapshot(
             callback: (
                 currentDoc: typeof receivedUpdatesCache
-            ) => Parameters<typeof broadcastSnapshot>[0]
+            ) => Parameters<typeof broadcastSnapshot>[0],
+            refresh = true
         ) {
+            if (refresh) {
+                await refreshCache()
+            }
             const lastUpdateRow = getHighestSeenRowIdFromCached()
             const res = callback(receivedUpdatesCache)
             return await broadcastSnapshot(res, lastUpdateRow)
