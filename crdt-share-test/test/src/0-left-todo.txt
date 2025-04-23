@@ -1,13 +1,28 @@
 
 
 
-Next: Find way to test connection disruptions! devtool do not work easily with websockets
-    - can just create a proxy to the server which I kill to simulate not connecting
+TODO Next:
+- Crypto
+- batching
+
+TODO:
+- clean up the console logs
+- ask AI for tips on code quality, api design
+
+
+TODO Later:
+- fix up snapshotting to be more intelligent, don't make duplicate snapshots, don't make them too frequently, maybe notify clients of new snapshots to help with them deciding whether to snapshot (may fix the above on its own)
+
+- publish this in it's own repo
+- publish this on npm
+
+- abstract the buckets for dynamic amount of buckets (should be easy right?)
 
 
 
---------------
-Next: make squashing more intelligent instead of every X seconds all clients at once + intelligent rejection on server maybe
+
+-----Oldish---------
+
 
 - intelligent snapshot rejection on server?
 
@@ -17,7 +32,7 @@ Next: make squashing more intelligent instead of every X seconds all clients at 
     - related to above
     - balance of bandwidth usage vs safety
 - only send snapshot if document is too long including snapshots?
-    - need to notify client of existance of new snapshots for this (not necessarily send the whole content down...)
+    - need to notify client of existence of new snapshots for this (not necessarily send the whole content down...)
 
 
 - proper cryptography key stuff.

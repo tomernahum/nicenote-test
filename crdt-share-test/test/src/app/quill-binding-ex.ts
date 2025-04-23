@@ -16,10 +16,7 @@ import {
     generateSymmetricEncryptionKey,
     getNonSecretHardCodedKeyForTesting,
 } from "../2-crypto"
-import {
-    getProviderServerInterface,
-    getProviderServerInterfaceNew,
-} from "../1-provider-server-interface"
+import { getProviderServerInterface } from "../1-provider-server-interface"
 
 Quill.register("modules/cursors", QuillCursors)
 
@@ -218,7 +215,7 @@ async function createDisplay(docId: string) {
         validOldKeys: [],
     }
 
-    const serverInterface = await getProviderServerInterfaceNew(
+    const serverInterface = await getProviderServerInterface(
         docId,
         encryptionParams
     )
@@ -232,18 +229,31 @@ async function createDisplay(docId: string) {
             (u) => u.bucket === "awareness"
         )
 
-        function stringifyUpdate(update: {
+        async function stringifyUpdate(update: {
             rowId: number
             bucket: string
             operation: Uint8Array
         }) {
-            const arrStr = btoa(String.fromCharCode(...update.operation))
-            return `${update.rowId}: ${update.operation.byteLength} byte update (decrypted): ${arrStr}`
+            const hashed = new Uint8Array(
+                await crypto.subtle.digest("SHA-256", update.operation)
+            )
+            const fullString = btoa(String.fromCharCode(...update.operation))
+            const hashedString = btoa(String.fromCharCode(...hashed)).slice(
+                0,
+                10
+            )
+
+            const out = `${update.rowId}: ${update.operation.byteLength} byte update: ${hashedString}; full: ${fullString}`
+            console.log("!!!!")
+            return out
         }
+
         const stringifiedUpdates = JSON.stringify(
             {
-                docUpdates: docUpdates.map(stringifyUpdate),
-                awarenessUpdates: awarenessUpdates.map(stringifyUpdate),
+                docUpdates: await Promise.all(docUpdates.map(stringifyUpdate)),
+                awarenessUpdates: await Promise.all(
+                    awarenessUpdates.map(stringifyUpdate)
+                ),
             },
             null,
             2
