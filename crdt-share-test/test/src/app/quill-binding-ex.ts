@@ -9,7 +9,7 @@ import { WebsocketProvider } from "y-websocket"
 
 import "quill/dist/quill.snow.css"
 // import { createRemoteDocProvider, setLatency } from "./local-provider"
-import { createRemoteDocProvider } from "../0-remote-provider"
+import { createRemoteDocProvider } from "../0--remote-provider"
 // import { setLatency } from "../1--mock-server-interface"
 import { getRandomAnimal, getRandomColor } from "../utils"
 import {
@@ -17,6 +17,7 @@ import {
     getNonSecretHardCodedKeyForTesting,
 } from "../2-crypto"
 import { getProviderServerInterface } from "../1-provider-server-interface"
+import { prettyUpdateString } from "../0-data-model"
 
 Quill.register("modules/cursors", QuillCursors)
 
@@ -161,7 +162,7 @@ async function createEditor(elementSelector: string, remoteDocId: string) {
             validOldKeys: [],
         },
     }).catch((error) => {
-        console.error("Failed to create remote doc provider!", error)
+        console.error("App: Failed to create remote doc provider!", error)
         if (error instanceof Error) {
             if (error.message.includes("connect failed")) {
                 alert("sorry you may be offline")
@@ -194,7 +195,7 @@ async function createEditor(elementSelector: string, remoteDocId: string) {
 }
 
 await createEditor("#editor1", "doc1")
-console.log("----")
+// console.log("----")
 // await createEditor("#editor2", "doc1")
 // console.log("----")
 // await createEditor("#editor3", "doc1")
@@ -229,36 +230,19 @@ async function createDisplay(docId: string) {
             (u) => u.bucket === "awareness"
         )
 
-        async function stringifyUpdate(update: {
-            rowId: number
-            bucket: string
-            operation: Uint8Array
-        }) {
-            const hashed = new Uint8Array(
-                await crypto.subtle.digest("SHA-256", update.operation)
-            )
-            const fullString = btoa(String.fromCharCode(...update.operation))
-            const hashedString = btoa(String.fromCharCode(...hashed)).slice(
-                0,
-                10
-            )
-
-            const out = `${update.rowId}: ${update.operation.byteLength} byte update: ${hashedString}; full: ${fullString}`
-            console.log("!!!!")
-            return out
-        }
-
         const stringifiedUpdates = JSON.stringify(
             {
-                docUpdates: await Promise.all(docUpdates.map(stringifyUpdate)),
+                docUpdates: await Promise.all(
+                    docUpdates.map(prettyUpdateString)
+                ),
                 awarenessUpdates: await Promise.all(
-                    awarenessUpdates.map(stringifyUpdate)
+                    awarenessUpdates.map(prettyUpdateString)
                 ),
             },
             null,
             2
         )
-        console.log("remoteUpdates", remoteUpdates)
+        console.log("(updatesDisplay) remoteUpdates:", remoteUpdates)
         jsonDisplay.textContent = stringifiedUpdates
     }
 

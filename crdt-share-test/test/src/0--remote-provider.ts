@@ -46,8 +46,8 @@ export async function createRemoteDocProvider(
 
     // "connect to the server doc"
     await connect().catch((error) => {
-        console.warn("!! Failed to connect to the remote doc:", error)
-        // todo: show error message to user etc
+        // console.warn("!! Failed to connect to the remote doc:", error)
+        // application can catch the error and handle it / display to user. Currently checks for error contains "connect failed". idk if there is a better way we should do this maybe... we could return isError or something (todo maybe)
         throw new Error("connect failed", { cause: error })
     })
     const remoteUpdates = await getRemoteUpdateList()
@@ -59,7 +59,7 @@ export async function createRemoteDocProvider(
         .map((update) => update.operation)
 
     let sentUpdateCount = 0
-    console.log("connected to doc", remoteUpdates)
+    // console.log("0- connected to doc", remoteUpdates)
 
     // connect to the local yDoc
     const yDocProvider = createBaseProvider(yDoc, handleBroadcastUpdate)
@@ -81,7 +81,7 @@ export async function createRemoteDocProvider(
 
     // broadcast local updates to the server. called by yDocProvider
     function handleBroadcastUpdate(update: Uint8Array) {
-        console.log("detected doc update, broadcasting")
+        // console.log("detected doc update, broadcasting")
         broadcastUpdate({ bucket: "doc", operation: update })
         sentUpdateCount += 1
     }
@@ -103,7 +103,7 @@ export async function createRemoteDocProvider(
     awareness.on("update", ({ added, updated, removed }) => {
         const changedClients = added.concat(updated).concat(removed)
         const encodedUpdate = encodeAwarenessUpdate(awareness, changedClients)
-        console.log("detected awareness update, broadcasting")
+        // console.log("detected awareness update, broadcasting")
         sentUpdateCount += 1
         broadcastUpdate({ bucket: "awareness", operation: encodedUpdate })
     })
@@ -147,7 +147,7 @@ export async function createRemoteDocProvider(
         }, 5000) // TODO: make this smarter
     }, Math.random() * 5000)
 
-    console.log("initialized doc")
+    console.log("finished provider initialization")
 
     return {
         awareness,
@@ -178,12 +178,15 @@ function mergeLocalDocIntoOnline(
         return
     }
 
-    console.info("merging initial state", {
-        onlineDoc: onlineDoc.getText("text").toJSON(),
-        yDoc: yDoc.getText("text").toJSON(),
-        onlineStateVector,
-        update,
-    })
+    console.info(
+        "merging initial state of local doc into online doc"
+        // {
+        //     onlineDoc: onlineDoc.getText("text").toJSON(),
+        //     yDoc: yDoc.getText("text").toJSON(),
+        //     onlineStateVector,
+        //     update,
+        // }
+    )
     handleBroadcastUpdate(update)
 }
 

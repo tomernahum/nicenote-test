@@ -72,9 +72,9 @@ export function getServerInterface() {
             )
             // const data = await response.json() // TODO. need to change the encoding for this. currently wont work as expected
             const dataBinary = await response.arrayBuffer()
-            console.log("response binary", dataBinary)
+            // console.log("response binary", dataBinary)
             const data = decodeOperations(new Uint8Array(dataBinary))
-            console.log("data", data)
+            // console.log("data", data)
 
             type ExpectedDataType = {
                 id: number
@@ -94,7 +94,7 @@ export function getServerInterface() {
                         JSON.stringify(data)
                 )
             }
-            console.log(Date.now(), "got server state")
+            // console.log(Date.now(), "got server state")
             return data as ExpectedDataType
         },
 

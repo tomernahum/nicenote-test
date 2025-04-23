@@ -1,4 +1,5 @@
 import { decodeList, encodeList } from "../shared/binary-encoding-helpers"
+import { prettyUpdateObj } from "./0-data-model"
 import { decryptData, encryptData } from "./2-crypto"
 import { getServerInterface } from "./2-server-interface-hono-socketio"
 import { promiseAllSettled, tryCatch } from "./utils2"
@@ -211,14 +212,17 @@ export function getProviderServerInterface(
             lastUpdateRowToReplace === "auto"
                 ? getHighestSeenRowIdFromCached()
                 : lastUpdateRowToReplace
-        console.log("broadcasting snapshot", lastUpdateRow, snapshot)
+        console.info("broadcasting snapshot", {
+            lastUpdateRow,
+            snapshot: snapshot.map(prettyUpdateObj),
+        })
         await server.applySnapshot(docId, encrypted, lastUpdateRow)
         //
     }
 
     return {
         connect: async function () {
-            console.log("1- connecting to doc server")
+            console.info("1- connecting to doc server")
             await server.connect(docId)
 
             // initialize memory cache
@@ -230,6 +234,11 @@ export function getProviderServerInterface(
                         rowId: updateRow,
                         operation: update,
                     })
+                    console.info(
+                        "received update(s)",
+                        await prettyUpdateObj(updates[0]),
+                        updates
+                    )
                     receivedUpdatesCache.push(...updates)
 
                     subscriberCallbacks.forEach((callback) => {
@@ -273,7 +282,8 @@ export function getProviderServerInterface(
                     update.operation
                 )
                 const encrypted = await encryptUpdate(encoded)
-                console.log("update to broadcast:", {
+                console.info("broadcasting update:", {
+                    bucket: update.bucket,
                     plainText: update,
                     encoded,
                     encrypted,
