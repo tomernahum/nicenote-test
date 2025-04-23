@@ -9,7 +9,7 @@ import { WebsocketProvider } from "y-websocket"
 
 import "quill/dist/quill.snow.css"
 // import { createRemoteDocProvider, setLatency } from "./local-provider"
-import { createRemoteDocProvider } from "../0--remote-provider"
+import { createRemoteDocProvider } from "../0-remote-provider"
 // import { setLatency } from "../1--mock-server-interface"
 import { getRandomAnimal, getRandomColor } from "../utils"
 import {

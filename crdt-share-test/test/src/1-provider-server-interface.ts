@@ -1,22 +1,20 @@
 import { decodeList, encodeList } from "../shared/binary-encoding-helpers"
-import { prettyUpdateObj } from "./0-data-model"
+import {
+    prettyUpdateObj,
+    Bucket,
+    Update,
+    UpdateOptRow,
+    ProviderEncryptionParams,
+} from "./0-data-model"
 import { decryptData, encryptData } from "./2-crypto"
 import { getServerInterface } from "./2-server-interface-hono-socketio"
 import { promiseAllSettled, tryCatch } from "./utils2"
 
 type YUpdate = Uint8Array
 
-export type EncryptionParams = {
-    mainKey: CryptoKey
-    validOldKeys: CryptoKey[]
-    // TODO: write key
-}
-
-type Bucket = "doc" | "awareness"
-
 function createEncodingLogic(
     docId: string,
-    encryptionParams: EncryptionParams
+    encryptionParams: ProviderEncryptionParams
 ) {
     const MULTI_UPDATE_PREFIX = 0
     const DOC_PREFIX = 100
@@ -30,7 +28,7 @@ function createEncodingLogic(
     }
 
     function decodeOneUpdateMessage(message: Uint8Array) {
-        const bucket = message[0] === DOC_PREFIX ? "doc" : "awareness"
+        const bucket: Bucket = message[0] === DOC_PREFIX ? "doc" : "awareness"
         const update = message.slice(1)
         return { bucket, update }
     }
@@ -73,7 +71,7 @@ function createEncodingLogic(
 
 function createEncryptionLogic(
     docId: string,
-    encryptionConfig: EncryptionParams
+    encryptionConfig: ProviderEncryptionParams
 ) {
     async function decryptUpdate(encryptedUpdate: Uint8Array) {
         const decryptedMainKey = await tryCatch(
@@ -106,7 +104,7 @@ function createEncryptionLogic(
 
 export function getProviderServerInterface(
     docId: string,
-    encryptionParams: EncryptionParams
+    encryptionParams: ProviderEncryptionParams
 ) {
     const {
         encodeOneUpdateMessage,
@@ -146,20 +144,6 @@ export function getProviderServerInterface(
     const server = getServerInterface()
 
     // --
-    type Update = {
-        bucket: string
-        rowId: number // row id of the update on the server
-        operation: Uint8Array
-    }
-
-    type UpdateOptRow = {
-        rowId?: number
-        bucket: Bucket
-        operation: Uint8Array
-    }
-    let uorTypeCheckHelper: UpdateOptRow = {} as UpdateOptRow
-    uorTypeCheckHelper satisfies Omit<Update, "rowId">
-
     let receivedUpdatesCache: Update[] = []
     let subscriberCallbacks: ((update: Update) => void)[] = []
 
@@ -338,7 +322,7 @@ export function getProviderServerInterface(
  */
 export function getProviderServerInterfaceOld(
     docId: string,
-    encryptionParams: EncryptionParams
+    encryptionParams: ProviderEncryptionParams
 ) {
     const server = getServerInterface()
     let encryptionConfig = encryptionParams
@@ -569,7 +553,7 @@ export function getProviderServerInterfaceOld(
         disconnect: () => {
             server.disconnect()
         },
-        swapEncryptionParams: (newParams: EncryptionParams) => {
+        swapEncryptionParams: (newParams: ProviderEncryptionParams) => {
             // TODO test
             encryptionConfig = newParams
         },

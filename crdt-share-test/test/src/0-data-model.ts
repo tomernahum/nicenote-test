@@ -16,8 +16,17 @@ export type UpdateFlex = {
     operation: Uint8Array
 }
 
+export type ProviderEncryptionParams = {
+    mainKey: CryptoKey
+    validOldKeys: CryptoKey[]
+    // TODO: write key
+}
+
 let uorTypeCheckHelper: UpdateOptRow = {} as UpdateOptRow
 uorTypeCheckHelper satisfies Omit<Update, "rowId">
+
+let uFlexTypeCheckHelper: UpdateFlex = {} as UpdateFlex
+uFlexTypeCheckHelper satisfies Omit<Update, "rowId">
 
 export async function prettyUpdateObj(update: UpdateFlex) {
     const operationHash = await hashBinary(update.operation)
