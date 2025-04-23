@@ -165,6 +165,7 @@ export function getProviderServerInterface(
     function getHighestSeenRowIdFromCached() {
         // TODO: replace with highest row id seen where we have seen all sequential updates up to that row.
         // this would solve for case where we heard about updates out of order (not the same order they were committed to the server db)
+        // which may or may not actually happen
         if (receivedUpdatesCache.length == 0) {
             throw "length was 0"
         }

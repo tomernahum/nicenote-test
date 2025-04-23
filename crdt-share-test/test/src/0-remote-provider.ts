@@ -137,6 +137,8 @@ export async function createRemoteDocProvider(
     setTimeout(() => {
         setInterval(() => {
             // const totalDocUpdates = ""
+            // TODO: replace sentUpdateCount with count of current total doc updates from anyone
+            // which we can keep track of, but we currently don't have a way to be notified of transactions
 
             if (sentUpdateCount >= 5) {
                 doSnapshot()

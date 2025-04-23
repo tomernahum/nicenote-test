@@ -1,11 +1,24 @@
 
-Next: make squashing more intelligent instead of every X seconds all clients at once + intelligent rejection on server maybe
+
 
 Next: Find way to test connection disruptions! devtool do not work easily with websockets
+    - can just create a proxy to the server which I kill to simulate not connecting
 
 
 
 --------------
+Next: make squashing more intelligent instead of every X seconds all clients at once + intelligent rejection on server maybe
+
+- intelligent snapshot rejection on server?
+
+- notify clients of new snapshots?
+    - waste of bandwidth if snapshots are really correct
+- periodic reloads of doc just in case it diverges
+    - related to above
+    - balance of bandwidth usage vs safety
+- only send snapshot if document is too long including snapshots?
+    - need to notify client of existance of new snapshots for this (not necessarily send the whole content down...)
+
 
 - proper cryptography key stuff.
     - support multiple keys & while-running key rotation
@@ -28,6 +41,9 @@ maybe: writer id or writer key id recorded in operation. later may add custom re
 
 - server: think about spam prevention story maybe? & integration with a proper authed / customized extendible server (besides cryptography auth)
     - maybe turn backend into library or something idk
+
+- is there a way to replace server with webrtc + storage endpoint for more decentralization/openness, but more importantly to save on egress charges?
+    is ingress of storage of new updates free? , and only loading the doc (maybe even only while noone else is online) has to be egress
 
 - make sure it is as bug free as possible
 
