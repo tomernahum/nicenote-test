@@ -1,0 +1,7 @@
+
+https://www.latacora.com/blog/2018/04/03/cryptographic-right-answers/
+https://www.latacora.com/blog/2024/07/29/crypto-right-answers-pq/
+https://gist.github.com/tqbf/be58d2d39690c3b366ad - "crypto right answers updated"
+https://github.com/samuel-lucas6/Cryptography-Guidelines?tab=readme-ov-file
+
+https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto

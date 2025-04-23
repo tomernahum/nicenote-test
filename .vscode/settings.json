@@ -1,4 +1,8 @@
 {
-    "cSpell.words": ["prosemirror", "unessessary", "ydoc"],
+    "cSpell.words": [
+        "prosemirror",
+        "Toxiproxy",
+        "ydoc"
+    ],
     "liveServer.settings.port": 5501
 }

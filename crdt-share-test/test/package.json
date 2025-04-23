@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "cd src/app && vite"
+    "dev": "cd src/app && vite",
+    "dev-server": "cd server && pnpm run dev",
+    "proxy-dev-server": "echo 'TODO. maybe use toxyproxy'"
   },
   "keywords": [],
   "author": "",

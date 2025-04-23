@@ -6,7 +6,7 @@ import {
     UpdateOptRow,
     ProviderEncryptionParams,
 } from "./0-data-model"
-import { decryptData, encryptData } from "./2-crypto"
+import { decryptData, encryptData } from "./1-crypto"
 import { getServerInterface } from "./2-server-interface-hono-socketio"
 import { promiseAllSettled, tryCatch } from "./utils2"
 
