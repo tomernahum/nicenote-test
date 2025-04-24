@@ -18,8 +18,14 @@ let clientSigned: Uint8Array(bucket, operation, client signature)
 let padded: Uint8Array(bucket, operation, client signature, padding)
 let encrypted: Uint8Array(iv, ciphertext(^))
 let serverSigned: Uint8Array(serverSignature, iv, ciphertext(^^))
-let serverMessage: Uint8Array(schemaVersionIndicator, serverSignature, iv, ciphertext(^^))
-onServerItself: rowId, serverMessage
+let sealedMessage: Uint8Array(schemaVersionIndicator, serverSignature, iv, ciphertext(^^))
+(
+    sent up/down using 2-server-interface, which uses socketio (may swap though)
+)
+onServerItself: rowId, sealedMessage
+
+        
+            
 
 arguably encoding is odd one out here since it's not about security
 instead it is about structure/compatibility, and compactness
@@ -94,7 +100,13 @@ export function createUpdateFactory(
         const dePadded = padding.unPadData(decrypted)
         // todo: verify post-encrypt hmac
         const decoded = encoding.decodeMultiUpdate(dePadded)
-        return decoded
+
+        const unsealedMessage = decoded
+
+        return unsealedMessage.map((message) => ({
+            ...message,
+            rowId: serverMessage.rowId,
+        }))
     }
 }
 
