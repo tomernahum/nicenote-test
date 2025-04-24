@@ -36,6 +36,7 @@ const DEFAULT_ENCRYPTION_CONFIG_VALUES = {
 }
 
 const ADDITIONAL_CONFIG_VALUES = {
+    // todo: think about how to do this, because every part is separate (encryption, mac, plain-encoding)
     schemaVersion: "1",
     backwardsCompatibleSchemaVersions: ["1"],
 }
@@ -58,67 +59,36 @@ export function createUpdateFactory(
     }
     const encoding = createEncodingLogic()
     const padding = createPaddingLogic(config)
-    const encryptionOld = createEncryptionLogicOld(config)
+    // const encryptionOld = createEncryptionLogicOld(config)
+    const encryption = createEncryptionLogic(config)
 
     return {
         clientMessagesToServerMessage,
         serverMessageToClientMessages,
     }
-    function clientMessagesToServerMessage(clientMessages: UpdateNoRow[]) {
+    async function clientMessagesToServerMessage(
+        clientMessages: UpdateNoRow[]
+    ) {
         const encoded = encoding.encodeMultipleUpdatesAsOne(clientMessages)
         // todo: pre-encrypt hmac
         const padded = padding.padData(encoded)
-        // todo: encrypt
+        const encrypted = await encryption.encrypt(padded)
         // todo: post-encrypt hmac
         // return encrypted
         return
     }
-    function serverMessageToClientMessages(serverMessage: ServerMessage) {
+    async function serverMessageToClientMessages(serverMessage: ServerMessage) {
         // WIP
         const sealedMessage = serverMessage.sealedMessage
 
-        const padded = padding.unPadData(sealedMessage)
-        const decoded = encoding.decodeMultiUpdate(padded)
+        const decrypted = await encryption.decrypt(sealedMessage)
+        const depadded = padding.unPadData(decrypted)
+        const decoded = encoding.decodeMultiUpdate(depadded)
     }
 }
 
 // maybe export crypto key creation functions here too?
 //
-
-function createPaddingLogic(config: Config) {
-    return {
-        padData: (data: Uint8Array) => {
-            const dataLength = data.byteLength
-            const padTarget = config.paddingLengthCheckpoints.find(
-                (checkpoint) => checkpoint >= dataLength + 1 // 1 bit for the padding indicator
-            )
-            if (!padTarget) {
-                throw new Error("Data is too long to encrypt")
-            }
-            const paddedData = new Uint8Array(padTarget)
-            paddedData.set(data)
-            paddedData[dataLength] = 0x80
-            // the rest should be 0-filled
-            return paddedData
-        },
-        unPadData: (paddedData: Uint8Array) => {
-            let i = paddedData.length - 1
-
-            // Skip all 0x00 bytes from the end
-            while (i >= 0 && paddedData[i] === 0x00) {
-                i--
-            }
-
-            // Expect 0x80 as the first non-zero padding byte
-            if (i < 0 || paddedData[i] !== 0x80) {
-                throw new Error("Invalid padding")
-            }
-
-            // Return everything before the 0x80 padding byte
-            return paddedData.slice(0, i)
-        },
-    }
-}
 
 function createEncodingLogic() {
     const MULTI_UPDATE_PREFIX = 0
@@ -161,6 +131,114 @@ function createEncodingLogic() {
         encodeOneUpdateMessage,
         encodeMultipleUpdatesAsOne,
         decodeMultiUpdate,
+    }
+}
+
+function createPaddingLogic(config: Config) {
+    return {
+        padData: (data: Uint8Array) => {
+            const dataLength = data.byteLength
+            const padTarget = config.paddingLengthCheckpoints.find(
+                (checkpoint) => checkpoint >= dataLength + 1 // 1 bit for the padding indicator
+            )
+            if (!padTarget) {
+                throw new Error("Data is too long to encrypt")
+            }
+            const paddedData = new Uint8Array(padTarget)
+            paddedData.set(data)
+            paddedData[dataLength] = 0x80
+            // the rest should be 0-filled
+            return paddedData
+        },
+        unPadData: (paddedData: Uint8Array) => {
+            let i = paddedData.length - 1
+
+            // Skip all 0x00 bytes from the end
+            while (i >= 0 && paddedData[i] === 0x00) {
+                i--
+            }
+
+            // Expect 0x80 as the first non-zero padding byte
+            if (i < 0 || paddedData[i] !== 0x80) {
+                throw new Error("Invalid padding")
+            }
+
+            // Return everything before the 0x80 padding byte
+            return paddedData.slice(0, i)
+        },
+    }
+}
+
+function createEncryptionLogic(config: Config) {
+    /**
+     * Do not call this more than 2^32 times with the same key! as the ivs are generated randomly and a collision breaks everything security-wise
+     * This does not hide message length, call padding logic first
+     */
+    async function encryptData(key: CryptoKey, data: Uint8Array) {
+        const iv = crypto.getRandomValues(new Uint8Array(12))
+        const cipherText = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv },
+            key,
+            data
+        )
+        const encrypted = new Uint8Array(12 + cipherText.byteLength)
+        // encrypted.set(SCHEMA.version, 0)
+        // idk if we should also put encryption version here separate from the version encoded in the overall update transformation message
+        encrypted.set(iv, 0)
+        encrypted.set(new Uint8Array(cipherText), 12)
+
+        return encrypted
+    }
+    async function decryptData(key: CryptoKey, encrypted: Uint8Array) {
+        if (encrypted.length < 14) {
+            throw new Error(
+                "Invalid encrypted data length, expected at least 14 bytes"
+            )
+        }
+        // otherwise assume correct encryption version (as in it's using the same 14 byte iv : aes-gcm encoded ciphertext)
+        const iv = encrypted.subarray(0, 12)
+        const cipherText = encrypted.subarray(12)
+        try {
+            const decrypted = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv },
+                key,
+                cipherText
+            ) // will throw if invalid key, data, or if tampering detected (authenticated encryption)
+            // our overall system is planned to have redundant HMAC verification because not everyone who is able to decrypt should be able to successfully encrypt like is the assumption of symmetric encryption. wait I could have used authenticated asymmetric construction couldn't I have. but symmetric does have better support in web crypto + asymmetric would need to be wrapping symmetric anyways. but we basically want a read secret key and a write secret key...
+
+            return new Uint8Array(decrypted)
+        } catch (e) {
+            throw new Error(
+                "Failed to decrypt data, may be due to an invalid key, invalid data, or authentication check failure",
+                { cause: e }
+            )
+        }
+    }
+
+    /** tries decrypting a message with each of multiple keys.
+     * (won't get false decryptions since aes-gcm encryption is authenticated) */
+    async function decryptWithMultipleKeys(
+        p: {
+            mainKey: CryptoKey
+            validOldKeys: CryptoKey[]
+        },
+        encryptedMessage: Uint8Array
+    ) {
+        for (const key of [p.mainKey, ...p.validOldKeys]) {
+            const decryptedR = await tryCatch(
+                decryptData(key, encryptedMessage)
+            )
+            if (!decryptedR.error) {
+                return decryptedR.data
+            }
+        }
+        throw new Error("Failed to decrypt update")
+    }
+
+    return {
+        encrypt: (message: Uint8Array) => encryptData(config.mainKey, message),
+        decrypt: (encryptedMessage: Uint8Array) =>
+            decryptWithMultipleKeys(config, encryptedMessage),
     }
 }
 

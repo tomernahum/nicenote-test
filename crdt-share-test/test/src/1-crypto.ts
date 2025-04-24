@@ -1,3 +1,5 @@
+// IN process of moving this logic into 1-crypto-update-factory.ts
+
 // choosing to use web crypto api, vs libsodium.js
 
 // note: browser will only allow this to work over https environments (so not onion sites unfortunately)
