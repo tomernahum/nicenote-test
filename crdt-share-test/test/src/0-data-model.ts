@@ -5,22 +5,26 @@ export type Update = {
     rowId: number // row id of the update on the server
     operation: Uint8Array
 }
+
+export type UpdateNoRow = Omit<Update, "rowId">
+
 export type UpdateOptRow = {
     rowId?: number
     bucket: Bucket
     operation: Uint8Array
 }
+// need to clean this up
 export type UpdateFlex = {
     rowId?: number
     bucket: string
     operation: Uint8Array
 }
 
-export type ProviderEncryptionParams = {
-    mainKey: CryptoKey
-    validOldKeys: CryptoKey[]
-    // TODO: write key
-}
+// export type ProviderEncryptionConfig = {
+//     mainKey: CryptoKey
+//     validOldKeys: CryptoKey[]
+//     // TODO: write key
+// }
 
 let uorTypeCheckHelper: UpdateOptRow = {} as UpdateOptRow
 uorTypeCheckHelper satisfies Omit<Update, "rowId">

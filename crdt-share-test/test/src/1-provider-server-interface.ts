@@ -4,107 +4,16 @@ import {
     Bucket,
     Update,
     UpdateOptRow,
-    ProviderEncryptionParams,
+    ProviderEncryptionConfig,
 } from "./0-data-model"
 import { decryptData, encryptData } from "./1-crypto"
 import { getServerInterface } from "./2-server-interface-hono-socketio"
 import { promiseAllSettled, tryCatch } from "./utils2"
 
 type YUpdate = Uint8Array
-
-function createEncodingLogic(
-    docId: string,
-    encryptionParams: ProviderEncryptionParams
-) {
-    const MULTI_UPDATE_PREFIX = 0
-    const DOC_PREFIX = 100
-    const AWARENESS_PREFIX = 97
-    function encodeOneUpdateMessage(bucket: Bucket, update: Uint8Array) {
-        const bucketEncoded = bucket === "doc" ? DOC_PREFIX : AWARENESS_PREFIX
-        const messageEncoded = new Uint8Array(update.length + 1)
-        messageEncoded[0] = bucketEncoded
-        messageEncoded.set(update, 1)
-        return messageEncoded
-    }
-
-    function decodeOneUpdateMessage(message: Uint8Array) {
-        const bucket: Bucket = message[0] === DOC_PREFIX ? "doc" : "awareness"
-        const update = message.slice(1)
-        return { bucket, update }
-    }
-
-    function encodeMultipleUpdatesAsOne(
-        updates: {
-            bucket: Bucket
-            update: Uint8Array
-        }[]
-    ) {
-        const encoded = encodeList(
-            updates.map((update) =>
-                encodeOneUpdateMessage(update.bucket, update.update)
-            )
-        )
-        const out = new Uint8Array(encoded.length + 1)
-
-        out[0] = MULTI_UPDATE_PREFIX
-        out.set(encoded, 1)
-        return out
-    }
-    function decodeMultiUpdate(message: Uint8Array): {
-        bucket: string
-        update: Uint8Array
-    }[] {
-        const updatePrefix = message[0]
-        if (updatePrefix !== MULTI_UPDATE_PREFIX) {
-            return [decodeOneUpdateMessage(message)]
-        }
-
-        const out = decodeList(message.slice(1))
-        return out.map((update) => decodeOneUpdateMessage(update))
-    }
-    return {
-        encodeOneUpdateMessage,
-        encodeMultipleUpdatesAsOne,
-        decodeMultiUpdate,
-    }
-}
-
-function createEncryptionLogic(
-    docId: string,
-    encryptionConfig: ProviderEncryptionParams
-) {
-    async function decryptUpdate(encryptedUpdate: Uint8Array) {
-        const decryptedMainKey = await tryCatch(
-            decryptData(encryptionConfig.mainKey, encryptedUpdate)
-        )
-        if (!decryptedMainKey.error) {
-            return decryptedMainKey.data
-        }
-        for (const key of encryptionConfig.validOldKeys) {
-            const decryptedR = await tryCatch(decryptData(key, encryptedUpdate))
-            if (!decryptedR.error) {
-                return decryptedR.data
-            }
-        }
-        throw new Error("Failed to decrypt update")
-    }
-    async function encryptUpdate(encodedUpdate: Uint8Array) {
-        const encrypted = await encryptData(
-            encryptionConfig.mainKey,
-            encodedUpdate
-        )
-        return encrypted
-    }
-
-    return {
-        decryptUpdate,
-        encryptUpdate,
-    }
-}
-
 export function getProviderServerInterface(
     docId: string,
-    encryptionParams: ProviderEncryptionParams
+    encryptionParams: ProviderEncryptionConfig
 ) {
     const {
         encodeOneUpdateMessage,
@@ -317,12 +226,102 @@ export function getProviderServerInterface(
     }
 }
 
+function createEncodingLogic(
+    docId: string,
+    encryptionParams: ProviderEncryptionConfig
+) {
+    const MULTI_UPDATE_PREFIX = 0
+    const DOC_PREFIX = 100
+    const AWARENESS_PREFIX = 97
+    function encodeOneUpdateMessage(bucket: Bucket, update: Uint8Array) {
+        const bucketEncoded = bucket === "doc" ? DOC_PREFIX : AWARENESS_PREFIX
+        const messageEncoded = new Uint8Array(update.length + 1)
+        messageEncoded[0] = bucketEncoded
+        messageEncoded.set(update, 1)
+        return messageEncoded
+    }
+
+    function decodeOneUpdateMessage(message: Uint8Array) {
+        const bucket: Bucket = message[0] === DOC_PREFIX ? "doc" : "awareness"
+        const update = message.slice(1)
+        return { bucket, update }
+    }
+
+    function encodeMultipleUpdatesAsOne(
+        updates: {
+            bucket: Bucket
+            update: Uint8Array
+        }[]
+    ) {
+        const encoded = encodeList(
+            updates.map((update) =>
+                encodeOneUpdateMessage(update.bucket, update.update)
+            )
+        )
+        const out = new Uint8Array(encoded.length + 1)
+
+        out[0] = MULTI_UPDATE_PREFIX
+        out.set(encoded, 1)
+        return out
+    }
+    function decodeMultiUpdate(message: Uint8Array): {
+        bucket: string
+        update: Uint8Array
+    }[] {
+        const updatePrefix = message[0]
+        if (updatePrefix !== MULTI_UPDATE_PREFIX) {
+            return [decodeOneUpdateMessage(message)]
+        }
+
+        const out = decodeList(message.slice(1))
+        return out.map((update) => decodeOneUpdateMessage(update))
+    }
+    return {
+        encodeOneUpdateMessage,
+        encodeMultipleUpdatesAsOne,
+        decodeMultiUpdate,
+    }
+}
+
+function createEncryptionLogic(
+    docId: string,
+    encryptionConfig: ProviderEncryptionConfig
+) {
+    async function decryptUpdate(encryptedUpdate: Uint8Array) {
+        const decryptedMainKey = await tryCatch(
+            decryptData(encryptionConfig.mainKey, encryptedUpdate)
+        )
+        if (!decryptedMainKey.error) {
+            return decryptedMainKey.data
+        }
+        for (const key of encryptionConfig.validOldKeys) {
+            const decryptedR = await tryCatch(decryptData(key, encryptedUpdate))
+            if (!decryptedR.error) {
+                return decryptedR.data
+            }
+        }
+        throw new Error("Failed to decrypt update")
+    }
+    async function encryptUpdate(encodedUpdate: Uint8Array) {
+        const encrypted = await encryptData(
+            encryptionConfig.mainKey,
+            encodedUpdate
+        )
+        return encrypted
+    }
+
+    return {
+        decryptUpdate,
+        encryptUpdate,
+    }
+}
+
 /** Wraps server interface with encryption and decryption
  *  maybe this should be rolled into 0-remote-provider, lots of unnecessary decoupling tbh makes you have to write the same code like 4 times
  */
 export function getProviderServerInterfaceOld(
     docId: string,
-    encryptionParams: ProviderEncryptionParams
+    encryptionParams: ProviderEncryptionConfig
 ) {
     const server = getServerInterface()
     let encryptionConfig = encryptionParams
@@ -553,7 +552,7 @@ export function getProviderServerInterfaceOld(
         disconnect: () => {
             server.disconnect()
         },
-        swapEncryptionParams: (newParams: ProviderEncryptionParams) => {
+        swapEncryptionParams: (newParams: ProviderEncryptionConfig) => {
             // TODO test
             encryptionConfig = newParams
         },
