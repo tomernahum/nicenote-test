@@ -27,12 +27,21 @@ export type ProviderEncryptionConfig = {
     mainKey: CryptoKey
     validOldKeys: CryptoKey[]
 
-    // plaintext length of messages will be rounded up to the closest of these values, in bytes. The highest value is the max supported length
+    /** plaintext message length will be padded up to the closest of these values, in bytes. The highest value is the max supported length  */
     paddingLengthCheckpoints?: number[]
 }
 const DEFAULT_ENCRYPTION_CONFIG_VALUES = {
     paddingLengthCheckpoints: [256, 2048, 16_384, 65_536, 262144],
+    schemaVersion: "1",
 }
+
+const ADDITIONAL_CONFIG_VALUES = {
+    schemaVersion: "1",
+    backwardsCompatibleSchemaVersions: ["1"],
+}
+type Config = ProviderEncryptionConfig &
+    typeof DEFAULT_ENCRYPTION_CONFIG_VALUES &
+    typeof ADDITIONAL_CONFIG_VALUES
 
 type ServerMessage = {
     sealedMessage: Uint8Array
@@ -42,8 +51,14 @@ type ServerMessage = {
 export function createUpdateFactory(
     encryptionConfig: ProviderEncryptionConfig
 ) {
+    const config = {
+        ...DEFAULT_ENCRYPTION_CONFIG_VALUES,
+        ...encryptionConfig,
+        ...ADDITIONAL_CONFIG_VALUES,
+    }
     const encoding = createEncodingLogic()
-    const encryption = createEncryptionLogic(encryptionConfig)
+    const padding = createPaddingLogic(config)
+    const encryptionOld = createEncryptionLogicOld(config)
 
     return {
         clientMessagesToServerMessage,
@@ -51,22 +66,59 @@ export function createUpdateFactory(
     }
     function clientMessagesToServerMessage(clientMessages: UpdateNoRow[]) {
         const encoded = encoding.encodeMultipleUpdatesAsOne(clientMessages)
-
         // todo: pre-encrypt hmac
-
-        // also pre-pads the plaintext and adds a schema version 2bytes, (should probably be moved up into here...)
-        const encrypted = encryption.encryptUpdate(encoded)
-
+        const padded = padding.padData(encoded)
+        // todo: encrypt
         // todo: post-encrypt hmac
-
-        return encrypted
+        // return encrypted
+        return
     }
     function serverMessageToClientMessages(serverMessage: ServerMessage) {
-        return
+        // WIP
+        const sealedMessage = serverMessage.sealedMessage
+
+        const padded = padding.unPadData(sealedMessage)
+        const decoded = encoding.decodeMultiUpdate(padded)
     }
 }
 
-// maybe export crypto key creation functions here?
+// maybe export crypto key creation functions here too?
+//
+
+function createPaddingLogic(config: Config) {
+    return {
+        padData: (data: Uint8Array) => {
+            const dataLength = data.byteLength
+            const padTarget = config.paddingLengthCheckpoints.find(
+                (checkpoint) => checkpoint >= dataLength + 1 // 1 bit for the padding indicator
+            )
+            if (!padTarget) {
+                throw new Error("Data is too long to encrypt")
+            }
+            const paddedData = new Uint8Array(padTarget)
+            paddedData.set(data)
+            paddedData[dataLength] = 0x80
+            // the rest should be 0-filled
+            return paddedData
+        },
+        unPadData: (paddedData: Uint8Array) => {
+            let i = paddedData.length - 1
+
+            // Skip all 0x00 bytes from the end
+            while (i >= 0 && paddedData[i] === 0x00) {
+                i--
+            }
+
+            // Expect 0x80 as the first non-zero padding byte
+            if (i < 0 || paddedData[i] !== 0x80) {
+                throw new Error("Invalid padding")
+            }
+
+            // Return everything before the 0x80 padding byte
+            return paddedData.slice(0, i)
+        },
+    }
+}
 
 function createEncodingLogic() {
     const MULTI_UPDATE_PREFIX = 0
@@ -111,7 +163,8 @@ function createEncodingLogic() {
         decodeMultiUpdate,
     }
 }
-function createEncryptionLogic(encryptionConfig: ProviderEncryptionConfig) {
+
+function createEncryptionLogicOld(encryptionConfig: ProviderEncryptionConfig) {
     async function decryptUpdate(encryptedUpdate: Uint8Array) {
         const decryptedMainKey = await tryCatch(
             decryptData(encryptionConfig.mainKey, encryptedUpdate)
