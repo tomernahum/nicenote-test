@@ -14,7 +14,7 @@ import {
 //     doSquash,
 // } from "./1--mock-server-interface"
 import { getProviderServerInterface } from "./1-provider-server-interface"
-import { ProviderEncryptionParams } from "./0-data-model"
+import { ProviderEncryptionConfig } from "./1-crypto-update-factory"
 
 type YUpdate = Uint8Array
 
@@ -28,7 +28,7 @@ export async function createRemoteDocProvider(
         remoteDocId: string
         mergeInitialState?: boolean // defaults to defaulting to false,
 
-        encryptionParams: ProviderEncryptionParams
+        encryptionParams: ProviderEncryptionConfig
     }
     // todo maybe: rewrite params of func to be more like other providers y-websocket (url, roomname, doc) // may also need secret key params
 ) {

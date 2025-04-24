@@ -62,7 +62,10 @@ type ServerMessage = {
     sealedMessage: Uint8Array
     rowId: number
 }
-/** Converts between decrypted client update messages and encoded encrypted server messages */
+/**
+ * Converts between decrypted client update messages and encoded encrypted server messages
+ * not actually the factory pattern
+ */
 export function createUpdateFactory(
     encryptionConfig: ProviderEncryptionConfig
 ) {
@@ -84,6 +87,7 @@ export function createUpdateFactory(
         clientMessages: UpdateNoRow[]
     ) {
         const encoded = encoding.encodeMultipleUpdatesAsOne(clientMessages)
+
         // todo: pre-encrypt hmac
         const padded = padding.padData(encoded)
         const encrypted = await encryption.encrypt(padded)
@@ -197,7 +201,7 @@ function createPaddingLogic(config: Config) {
 }
 
 // Note that key rotation is not the responsibility of this library
-// new ketys should be agreed upon in a seperate system and then passed into this library via encryptionconfig
+// new keys should be agreed upon in a separate system and then passed into this library via encryptionConfig
 // that should be enough to get PCS
 function createEncryptionLogic(config: Config) {
     /**

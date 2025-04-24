@@ -5,9 +5,10 @@ import {
     ProviderEncryptionConfig,
 } from "./1-crypto-update-factory"
 import { getServerInterface } from "./2-server-interface-hono-socketio"
-import { promiseAllSettled, tryCatch } from "./utils2"
 
-type YUpdate = Uint8Array
+// encryption logic in 1-crypto-update-factory
+// encoding logic also in 1-crypto-update-factory
+
 export function getProviderServerInterface(
     docId: string,
     encryptionParams: ProviderEncryptionConfig
