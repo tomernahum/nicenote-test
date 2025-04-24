@@ -1,6 +1,6 @@
 import { decodeList, encodeList } from "../shared/binary-encoding-helpers"
 import { Bucket, Update, UpdateNoRow, UpdateOptRow } from "./0-data-model"
-import { decryptData, encryptData } from "./1-crypto"
+import { decryptData, encryptData } from "./1-crypto-old"
 import { tryCatch } from "./utils2"
 
 // used by 1-provider-server-interface.ts
@@ -89,11 +89,13 @@ export function createUpdateFactory(
         const padded = padding.padData(encoded)
         const encrypted = await encryption.encrypt(padded)
         // todo: post-encrypt hmac
-        // return encrypted
-        return
+        // todo: add schema version string for future backwards compatibility with migrations
+        return encrypted
     }
     async function serverMessageToClientMessages(serverMessage: ServerMessage) {
         const sealedMessage = serverMessage.sealedMessage
+
+        // todo: check schema is what we expected. throw error if not
 
         // todo: strip off client-server-known hmac (verifying accomplishes nothing)
         const decrypted = await encryption.decrypt(sealedMessage)
@@ -192,6 +194,9 @@ function createPaddingLogic(config: Config) {
     }
 }
 
+// Note that key rotation is not the responsibility of this library
+// new ketys should be agreed upon in a seperate system and then passed into this library via encryptionconfig
+// that should be enough to get PCS
 function createEncryptionLogic(config: Config) {
     /**
      * Do not call this more than 2^32 times with the same key! as the ivs are generated randomly and a collision breaks everything security-wise
@@ -265,32 +270,31 @@ function createEncryptionLogic(config: Config) {
     }
 }
 
-function createEncryptionLogicOld(encryptionConfig: ProviderEncryptionConfig) {
-    async function decryptUpdate(encryptedUpdate: Uint8Array) {
-        const decryptedMainKey = await tryCatch(
-            decryptData(encryptionConfig.mainKey, encryptedUpdate)
-        )
-        if (!decryptedMainKey.error) {
-            return decryptedMainKey.data
-        }
-        for (const key of encryptionConfig.validOldKeys) {
-            const decryptedR = await tryCatch(decryptData(key, encryptedUpdate))
-            if (!decryptedR.error) {
-                return decryptedR.data
-            }
-        }
-        throw new Error("Failed to decrypt update")
-    }
-    async function encryptUpdate(encodedUpdate: Uint8Array) {
-        const encrypted = await encryptData(
-            encryptionConfig.mainKey,
-            encodedUpdate
-        )
-        return encrypted
-    }
+export async function generateSymmetricEncryptionKey(
+    extractable: boolean = true
+) {
+    const key = await crypto.subtle.generateKey(
+        {
+            name: "AES-GCM",
+            length: 256,
+        },
+        extractable,
+        ["encrypt", "decrypt"] // key usages
+    )
+    return key
+}
 
-    return {
-        decryptUpdate,
-        encryptUpdate,
-    }
+export async function getNonSecretHardCodedKeyForTestingSymmetricEncryption(
+    seed: number = 0
+) {
+    const seedArray = new Uint8Array(16)
+    seedArray.set([seed])
+
+    return await crypto.subtle.importKey(
+        "raw",
+        seedArray,
+        { name: "AES-GCM", length: 256 },
+        true,
+        ["encrypt", "decrypt"]
+    )
 }

@@ -14,8 +14,8 @@ import { createRemoteDocProvider } from "../0-remote-provider"
 import { getRandomAnimal, getRandomColor } from "../utils"
 import {
     generateSymmetricEncryptionKey,
-    getNonSecretHardCodedKeyForTesting,
-} from "../2-crypto"
+    getNonSecretHardCodedKeyForTestingSymmetricEncryption,
+} from "../1-crypto-update-factory"
 import { getProviderServerInterface } from "../1-provider-server-interface"
 import { prettyUpdateString } from "../0-data-model"
 
@@ -158,7 +158,8 @@ async function createEditor(elementSelector: string, remoteDocId: string) {
         remoteDocId,
         mergeInitialState: true,
         encryptionParams: {
-            mainKey: await getNonSecretHardCodedKeyForTesting(),
+            mainKey:
+                await getNonSecretHardCodedKeyForTestingSymmetricEncryption(),
             validOldKeys: [],
         },
     }).catch((error) => {
@@ -212,7 +213,7 @@ async function createDisplay(docId: string) {
     const refreshButton = dataDisplayDiv.querySelector("button")!
 
     const encryptionParams = {
-        mainKey: await getNonSecretHardCodedKeyForTesting(),
+        mainKey: await getNonSecretHardCodedKeyForTestingSymmetricEncryption(),
         validOldKeys: [],
     }
 

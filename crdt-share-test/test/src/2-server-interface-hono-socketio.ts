@@ -8,7 +8,7 @@ import { decodeOperations } from "../shared/serializer"
 // to be called by e2ee provider, with already encrypted data
 // then this can be swapped out to use plain ws, webrtc, etc
 
-type EncryptedUpdate = Uint8Array // generally 2 bytes version, 12 bytes iv, then ciphertext
+type SealedUpdate = Uint8Array // see crypto-update-factory.ts
 
 export function getServerInterface() {
     // const hono = hc<HonoServer>("http://localhost:3000")
@@ -44,26 +44,29 @@ export function getServerInterface() {
             })
         },
 
-        addUpdate: (docId: string, update: EncryptedUpdate) => {
+        addUpdate: (docId: string, update: SealedUpdate) => {
             socket.emit("addUpdate", docId, update)
         },
 
-        /** NOTE: this only supports one listener (currently) */
+        /** NOTE: this only supports one listener per doc (currently - TODO)
+         * works fine in our app if we only have one provider active per single doc - or multiple which we never unsubscribe from
+         */
         subscribeToRemoteUpdates: (
             docId: string,
-            callback: (update: EncryptedUpdate, updateRow: number) => void
+            callback: (sealedMessage: SealedUpdate, rowId: number) => void
         ) => {
             socket.emit("startListeningToDoc", docId)
             socket.on(
                 "newUpdate",
-                (updateDocId: string, update: EncryptedUpdate, updateRow) => {
+                (updateDocId: string, update: SealedUpdate, rowId) => {
                     if (updateDocId !== docId) return
-                    callback(new Uint8Array(update), updateRow) // sometimes/always it returns a raw array buffer even though it shouldn't
+                    callback(new Uint8Array(update), rowId) // sometimes/always it returns a raw array buffer even though it's not supposed to
                 }
             )
 
             return () => {
                 socket.emit("stopListeningToDoc", docId)
+                // NOTE: removes all listeners for this doc across our app, hence the above note
             }
         },
         getRemoteUpdateList: async (docId: string) => {
@@ -95,7 +98,14 @@ export function getServerInterface() {
                 )
             }
             // console.log(Date.now(), "got server state")
-            return data as ExpectedDataType
+            // return data as ExpectedDataType
+
+            // TODO: make this consistent in socketio too
+
+            return data.map(({ id, operation }) => ({
+                rowId: id,
+                sealedMessage: operation,
+            }))
         },
 
         applySnapshot: async (

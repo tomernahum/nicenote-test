@@ -9,16 +9,18 @@ TODO:
 - clean up the console logs
 - ask AI for tips on code quality, api design
 
+- fix bug: since socketio works globally if we close our connection in one docProvider it will close connection in all doc providers for that same doc. easy fix by just keeping track of callbacks in 2-server-interface
 
 TODO Later:
 - fix up snapshotting to be more intelligent, don't make duplicate snapshots, don't make them too frequently, maybe notify clients of new snapshots to help with them deciding whether to snapshot (may fix the above on its own)
 
+
 - publish this in it's own repo
 - publish this on npm
+- write up what is and isn't in the threat model / accomplished by this system. And what can be toggled
 
 - abstract the buckets for dynamic amount of buckets (should be easy right?)
 
-- write up what is and isn't in the threat model / accomplished by this system. And what can be toggled
 
 --
 Mitigations:
