@@ -139,7 +139,7 @@ export function getProviderServerInterface(
             return []
         }
     }
-    // TODO maybe: encrypt and encode multi updates into one
+    // TODO maybe: encrypt and encode multi updates into one unnecessary
 
     const server = getServerInterface()
 

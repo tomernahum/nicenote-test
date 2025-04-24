@@ -8,29 +8,37 @@
 // And I guess tell your users to make sure their browser&operating system implements cryptography securely. Which they would need even for native apps or for libsodium because they all rely on the operating system's cs-prng (libsodium.js uses web crypto api for random entropy). So difference is with web crypto the device needs to implement the algorithms themselves securely too, whereas I believe libsodium does it in memory in ws, which has it's own tradeoffs
 // that said giving more of the work to the browser/OS may be more secure vs libsodium, since it has more power to do things like constant time algorithms. Although I hear libsodium's XSalsa20-Poly1305 and the like is more resistant to side channel attacks in the first place than web crypto's AES-GCM. So idk
 
-export async function generateSymmetricEncryptionKey() {
+/** Non-extractable is more secure, but you can't export/share it */
+export async function generateSymmetricEncryptionKey(
+    extractable: boolean = true
+) {
     const key = await crypto.subtle.generateKey(
         {
             name: "AES-GCM",
             length: 256,
         },
-        true, // extractable
+        extractable,
         ["encrypt", "decrypt"] // key usages
     )
     return key
 }
-export async function generateSymmetricEncryptionKeyNonExportable() {
+
+export async function generateSymmetricSignatureKey(
+    extractable: boolean = true
+) {
     const key = await crypto.subtle.generateKey(
         {
-            name: "AES-GCM",
-            length: 256,
+            name: "HMAC",
+            hash: { name: "SHA-256" },
         },
-        false, // extractable
-        ["encrypt", "decrypt"]
+        extractable,
+        ["sign", "verify"] // key usages
     )
     return key
 }
-export async function getNonSecretHardCodedKeyForTesting(seed: number = 0) {
+export async function getNonSecretHardCodedKeyForTestingSymmetricEncryption(
+    seed: number = 0
+) {
     const seedArray = new Uint8Array(16)
     seedArray.set([seed])
 
@@ -40,6 +48,20 @@ export async function getNonSecretHardCodedKeyForTesting(seed: number = 0) {
         { name: "AES-GCM", length: 256 },
         true,
         ["encrypt", "decrypt"]
+    )
+}
+export async function getNonSecretHardCodedKeyForTestingSymmetricSignature(
+    seed: number = 0
+) {
+    const seedArray = new Uint8Array(16)
+    seedArray.set([seed])
+
+    return await crypto.subtle.importKey(
+        "raw",
+        seedArray,
+        { name: "HMAC", hash: { name: "SHA-256" } },
+        true,
+        ["sign", "verify"]
     )
 }
 
@@ -145,31 +167,31 @@ export async function decryptData(key: CryptoKey, encrypted: Uint8Array) {
     }
 }
 
-async function test() {
-    // const key = await generateSymmetricEncryptionKey()
-    const key = await generateSymmetricEncryptionKeyNonExportable()
-    console.log(key)
-    // console.log(await crypto.subtle.exportKey("raw", key))
+// async function test() {
+//     // const key = await generateSymmetricEncryptionKey()
+//     const key = await generateSymmetricEncryptionKeyNonExportable()
+//     console.log(key)
+//     // console.log(await crypto.subtle.exportKey("raw", key))
 
-    const plainText = new Uint8Array([1, 2, 3])
-    console.log("Plain text:", plainText)
+//     const plainText = new Uint8Array([1, 2, 3])
+//     console.log("Plain text:", plainText)
 
-    const encrypted = await encryptData(key, plainText)
-    console.log("Encrypted:", encrypted)
-    const decrypted = await decryptData(key, encrypted)
-    console.log("Decrypted:", decrypted)
+//     const encrypted = await encryptData(key, plainText)
+//     console.log("Encrypted:", encrypted)
+//     const decrypted = await decryptData(key, encrypted)
+//     console.log("Decrypted:", decrypted)
 
-    // const malformedEncrypted1 = encrypted.subarray(2)
-    // // console.log(await decryptData(key, malformedEncrypted1))
+//     // const malformedEncrypted1 = encrypted.subarray(2)
+//     // // console.log(await decryptData(key, malformedEncrypted1))
 
-    // const malformedEncrypted2 = await encryptData(
-    //     await generateSymmetricEncryptionKeyNonExportable(),
-    //     plainText
-    // )
-    // console.log(
-    //     "Malformed encrypted 2:",
-    //     await decryptData(key, malformedEncrypted2)
-    // )
-}
+//     // const malformedEncrypted2 = await encryptData(
+//     //     await generateSymmetricEncryptionKeyNonExportable(),
+//     //     plainText
+//     // )
+//     // console.log(
+//     //     "Malformed encrypted 2:",
+//     //     await decryptData(key, malformedEncrypted2)
+//     // )
+// }
 
 // TODO: more extensive tests, unit tests. These are pretty simple but it would still be a good idea. Note that web crypto api is not available in node.js, only in browsers

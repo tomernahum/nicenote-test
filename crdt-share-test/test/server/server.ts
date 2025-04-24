@@ -16,6 +16,38 @@ import type {
     SocketData,
 } from "../shared/shared-types"
 import { encodeOperations } from "../shared/serializer"
+// import { Bandwidth, ICreateToxicBody, Toxiproxy } from "toxiproxy-node-client"
+
+// async function setupToxiProxy() {
+//     // WIP
+//     const toxiproxy = new Toxiproxy("http://localhost:8474")
+//     const proxyBody = {
+//         listen: "localhost:0",
+//         name: "redis",
+//         upstream: "redis:6379",
+//     }
+//     const proxy = await toxiproxy.createProxy(proxyBody)
+
+//     await proxy.addToxic({
+//         name: "latency_down",
+//         type: "latency",
+//         stream: "downstream",
+//         toxicity: 1.0,
+//         attributes: { latency: 500, jitter: 50 },
+//     })
+
+//     // const client = new Toxiproxy("http://localhost:8474")
+
+//     // // Create a proxy named "hono" on 3001 → upstream 3000
+//     // const proxy = await client.createProxy({
+//     //     name: "hono",
+//     //     listen: "127.0.0.1:3001",
+//     //     upstream: "127.0.0.1:3000",
+//     // })
+//     // console.log(`Created proxy ${proxy.name} 3001→3000`)
+
+//     // return proxy
+// }
 
 // may replace the whole thing with something else, like cloudflare durable objects for the data and workers for transporting, then we can keep the documents as one durable object and have it be close to the users.
 

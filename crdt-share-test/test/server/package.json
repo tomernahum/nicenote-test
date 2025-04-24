@@ -23,5 +23,8 @@
     "onlyBuiltDependencies": [
       "better-sqlite3"
     ]
+  },
+  "devDependencies": {
+    "toxiproxy-node-client": "^4.0.0"
   }
 }
