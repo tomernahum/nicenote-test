@@ -1,0 +1,45 @@
+
+
+rowId is also stored along side the sealedMessage in plain text (not encrypted or verified...)
+todo is that bad? 
+    threats (cia):
+    - DoS from server (don't care about in our model currently)
+    - spying from server (most important)
+    - fake data / integrity from server (do care about but not as much as Confidentiality)
+        server can not fabricate updates or transactions
+        but with no verification of rowIds, it could reorder updates/transactions
+            this does not change the end state though if we are using mutable operations like from CRDTs/yjs
+        it can also omit certain updates
+            this would change the end state!!
+            but server can't distinguish updates to know which updates to omit
+                except from the side channel of message size & message timing/frequency
+                    & who the update came from (eg ip address) (big one)
+                also it could just want to cause chaos by showing different users different subsets of updates
+            solution?: embed order in messages and don't show updates without having the previous one
+                but messages may be sent at the same time from different devices...
+                I think there could be some way to do this though 
+                could also do partial solution like enforcing order per each device
+        for now I will not solve this but hope to later. 
+            Also idk if using websockets would solve this automatically since server only sets up direct connection between two clients. Actually it wouldn't 100% unless we use pure gossip protocol, which would not work for our desired ux of everything showing up, since updates need to be stored somewhere so server has to be involved. we could redundantly gossip, and then ask server for all or just remaining updates, that way server will have a harder time with it. 
+            All these solutions require a bunch of work for a relatively unlikely-to-happen seeming problem
+            will maybe implement them only after a product with this library takes off
+        above reordering problem exists regardless of rowid
+        the other threat is it would trick clients into telling it to delete incorrect updates as part of snapshot (or just delete the wrong ones regardless). I think that is the same problem as above?
+
+--------
+- need read only permissions
+    - can sign all writes with a separate signing key, verify writes are legit:
+    
+    - ideal: public/private digital signatures. server verifies with public, clients double verify with public
+        sadly the good ec25519 is not supported by chrome! and the other one looks sussy baka.
+    
+    - alternative: 
+        symmetric hmac secret shared between server and clients, server is now trusted to prevent spam
+        + separate symmetric hmac secret shared between only clients, clients reject messages that don't pass that one (ie sign every message twice)
+        
+        can include just one of these and get most of the benefit also (but not all)
+        maybe consumer should be able to choose to turn off one they don't care about, if it turns out to be burdensome amount of extra data
+
+
+
+

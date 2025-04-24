@@ -1,6 +1,5 @@
 import { decodeList, encodeList } from "../shared/binary-encoding-helpers"
 import { Bucket, Update, UpdateNoRow, UpdateOptRow } from "./0-data-model"
-import { decryptData, encryptData } from "./1-crypto-old"
 import { tryCatch } from "./utils2"
 
 // used by 1-provider-server-interface.ts
@@ -105,10 +104,13 @@ export function createUpdateFactory(
 
         const unsealedMessage = decoded
 
-        return unsealedMessage.map((message) => ({
+        const out = unsealedMessage.map((message) => ({
             ...message,
             rowId: serverMessage.rowId,
         }))
+        out satisfies Update[]
+
+        return out
     }
 }
 
