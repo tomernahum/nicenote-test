@@ -7,7 +7,12 @@ import { tryCatch } from "./utils2"
 
 /* 
 // encryption/transformation steps:
-let plaintext: UpdateOptRow[]
+(
+    quill change
+    yjs change
+    yjs encoded operation
+)
+let plainObject: UpdateOptRow[] (bucket, operation(eg yjs op))
 let encoded: Uint8Array(bucket, operation)
 let clientSigned: Uint8Array(bucket, operation, client signature)
 let padded: Uint8Array(bucket, operation, client signature, padding)
@@ -15,6 +20,10 @@ let encrypted: Uint8Array(iv, ciphertext(^))
 let serverSigned: Uint8Array(serverSignature, iv, ciphertext(^^))
 let serverMessage: Uint8Array(schemaVersionIndicator, serverSignature, iv, ciphertext(^^))
 onServerItself: rowId, serverMessage
+
+arguably encoding is odd one out here since it's not about security
+instead it is about structure/compatibility, and compactness
+encoding also merges multiple updates into one in it, which is actually about security
 */
 
 // UpdateOptRow[] -> encrypted&server-signed
@@ -78,12 +87,14 @@ export function createUpdateFactory(
         return
     }
     async function serverMessageToClientMessages(serverMessage: ServerMessage) {
-        // WIP
         const sealedMessage = serverMessage.sealedMessage
 
+        // todo: strip off client-server-known hmac (verifying accomplishes nothing)
         const decrypted = await encryption.decrypt(sealedMessage)
-        const depadded = padding.unPadData(decrypted)
-        const decoded = encoding.decodeMultiUpdate(depadded)
+        const dePadded = padding.unPadData(decrypted)
+        // todo: verify post-encrypt hmac
+        const decoded = encoding.decodeMultiUpdate(dePadded)
+        return decoded
     }
 }
 
