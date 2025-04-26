@@ -24,36 +24,41 @@ let sealedMessage: Uint8Array(schemaVersionIndicator, serverSignature, iv, ciphe
 onServerItself: rowId, sealedMessage
 
         
-            
 
 arguably encoding is odd one out here since it's not about security
 instead it is about structure/compatibility, and compactness
 encoding also merges multiple updates into one in it, which is actually about security
 */
 
-// UpdateOptRow[] -> encrypted&server-signed
+// UpdateNoRow[] -> encrypted&server-signed
 // encrypted&server-signed -> Update[]
 
-// Client Generated Message: UpdateNoRow
-// Server message after decryption: Update with row
-
+/**
+ * mainKey, validOldKeys must be an AES key
+ *
+ */
 export type ProviderEncryptionConfig = {
     mainKey: CryptoKey
     validOldKeys: CryptoKey[]
 
     /** plaintext message length will be padded up to the closest of these values, in bytes. The highest value is the max supported length  */
     paddingLengthCheckpoints?: number[]
+
+    useWriteSignaturesForServer: boolean
+    useWriteSignaturesForClients: boolean
 }
 const DEFAULT_ENCRYPTION_CONFIG_VALUES = {
     paddingLengthCheckpoints: [256, 2048, 16_384, 65_536, 262144],
-    schemaVersion: "1",
 }
 
 const ADDITIONAL_CONFIG_VALUES = {
-    // todo: think about how to do this, because every part is separate (encryption, mac, plain-encoding)
-    schemaVersion: "1",
-    backwardsCompatibleSchemaVersions: ["1"],
-}
+    // Note that versions are read by reading the first expectedVersion.length bytes of the encoded update message.
+    // Meaning a newer version with > 4 length will be detected by current code as whatever the first 4 chars are.
+    // changing the version bytelength will also break backwards compatibility on new code, so createVersionLogic will need to be edited
+    // version can be any string
+    schemaVersion: "0001",
+    backwardsCompatibleSchemaVersions: ["0001"],
+} as const
 type Config = ProviderEncryptionConfig &
     typeof DEFAULT_ENCRYPTION_CONFIG_VALUES &
     typeof ADDITIONAL_CONFIG_VALUES
@@ -76,8 +81,8 @@ export function createUpdateFactory(
     }
     const encoding = createEncodingLogic()
     const padding = createPaddingLogic(config)
-    // const encryptionOld = createEncryptionLogicOld(config)
     const encryption = createEncryptionLogic(config)
+    const versioning = createVersionLogic(config)
 
     return {
         clientMessagesToServerMessage,
@@ -93,15 +98,18 @@ export function createUpdateFactory(
         const encrypted = await encryption.encrypt(padded)
         // todo: post-encrypt hmac
         // todo: add schema version string for future backwards compatibility with migrations
-        return encrypted
+        const versioned = versioning.addVersion(encrypted)
+        return versioned
     }
     async function serverMessageToClientMessages(serverMessage: ServerMessage) {
         const sealedMessage = serverMessage.sealedMessage
 
-        // todo: check schema is what we expected. throw error if not
+        const [deVersioned, version] =
+            versioning.stripOffVersionAndConfirmItIsValid(sealedMessage)
+        // can branch off logic here for a backwards compatible but differently processed version
 
         // todo: strip off client-server-known hmac (verifying accomplishes nothing)
-        const decrypted = await encryption.decrypt(sealedMessage)
+        const decrypted = await encryption.decrypt(deVersioned)
         const dePadded = padding.unPadData(decrypted)
         // todo: verify post-encrypt hmac
         const decoded = encoding.decodeMultiUpdate(dePadded)
@@ -164,6 +172,8 @@ function createEncodingLogic() {
         decodeMultiUpdate,
     }
 }
+
+// ---
 
 function createPaddingLogic(config: Config) {
     return {
@@ -303,4 +313,46 @@ export async function getNonSecretHardCodedKeyForTestingSymmetricEncryption(
         true,
         ["encrypt", "decrypt"]
     )
+}
+
+function createSigningLogic(config: Config) {
+    // our system uses two separate signing steps, to verify that someone is allowed to write to a document / send a message
+    // 1. pre-encryption, used to verify that a sent message is legitimate by the clients. The key for this is secret between writer-permissioned clients of a document
+    //    - if skipped, then server could maliciously allow someone with only read permissions to send messages. (a random person / server itself still couldn't as the symmetric reading encryption is in place and is authenticated)
+    // 2. post-encrypt hmac, used by server to verify that a message send attempt is really from a writer-permissioned client
+    //    - can replace this with a traditional auth system
+    //    - if skipped, people with read-only permissions could send messages which are processed by other readers/writers and then  skipped by the first signature verification (if it is enabled), ie you could spam them / dos them, whereas server could hopefully take it. may not be a real problem idk, esp for use case of readers being trusted select few
+}
+
+function createVersionLogic(config: Config) {
+    const mainVersionBytes = new TextEncoder().encode(config.schemaVersion)
+    const mainVersionLength = mainVersionBytes.length
+
+    function addVersion(message: Uint8Array) {
+        const out = new Uint8Array(message.length + mainVersionLength)
+        out.set(mainVersionBytes)
+        out.set(message, mainVersionLength)
+        return out
+    }
+    function readVersion(message: Uint8Array, expectedByteLength: number) {
+        if (message.length < expectedByteLength) {
+            throw new Error("Message too short to contain version")
+        }
+        const versionBytes = message.subarray(0, expectedByteLength)
+        const version = new TextDecoder().decode(versionBytes)
+        return version
+    }
+    function stripOffVersionAndConfirmItIsValid(message: Uint8Array) {
+        const version = readVersion(message, mainVersionLength)
+        if (
+            version !== config.schemaVersion &&
+            // @ts-expect-error // this shouldn't be an error imo
+            !config.backwardsCompatibleSchemaVersions.includes(version)
+        ) {
+            // TODO see if any backwards compatible version matches, in case they are a different length
+            throw new Error("Invalid version")
+        }
+        return [message.subarray(version.length), version] as const
+    }
+    return { addVersion, stripOffVersionAndConfirmItIsValid }
 }
