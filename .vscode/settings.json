@@ -1,9 +1,7 @@
 {
-    "cSpell.words": [
-        "ciphertext",
-        "prosemirror",
-        "Toxiproxy",
-        "ydoc"
-    ],
-    "liveServer.settings.port": 5501
+    "cSpell.words": ["ciphertext", "prosemirror", "Toxiproxy", "ydoc"],
+    "liveServer.settings.port": 5501,
+    "material-icon-theme.folders.associations": {
+        "e2ee-sync-library": "Interface"
+    }
 }
