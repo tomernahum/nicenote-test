@@ -39,11 +39,12 @@ encoding also merges multiple updates into one in it, which is actually about se
  */
 export type ProviderEncryptionConfig = {
     mainKey: CryptoKey
-    validOldKeys: CryptoKey[]
+    validOldKeys: CryptoKey[] //  TODO: make optional
 
     /** plaintext message length will be padded up to the closest of these values, in bytes. The highest value is the max supported length  */
     paddingLengthCheckpoints?: number[]
 
+    // WIP
     useWriteSignaturesForServer: boolean
     useWriteSignaturesForClients: boolean
 }

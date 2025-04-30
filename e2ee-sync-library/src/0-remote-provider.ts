@@ -14,7 +14,7 @@ import {
 //     doSquash,
 // } from "./1--mock-server-interface"
 import { getProviderServerInterface } from "./1-provider-server-interface"
-import { ProviderEncryptionConfig } from "./1-crypto-update-factory"
+import type { ProviderEncryptionConfig } from "./1-crypto-update-factory"
 
 type YUpdate = Uint8Array
 
