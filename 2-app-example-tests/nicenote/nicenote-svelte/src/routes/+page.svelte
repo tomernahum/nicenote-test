@@ -5,7 +5,7 @@
 <Note />
 <br />
 <br />
-<!-- <Note /> -->
+<Note />
 
 <br />
 
