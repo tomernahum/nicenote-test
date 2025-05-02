@@ -1,11 +1,31 @@
 import Quill from 'quill';
 import QuillCursors from 'quill-cursors';
 
-// to be used with createCollaborativeQuillEditor
-function initializeQuillEditor(element: HTMLElement | string) {
+import 'quill/dist/quill.bubble.css';
+
+// shoot, with bubble theme, toolbar is cut off in the div
+/*
+ * to be used with createCollaborativeQuillEditor
+ */
+export function initializeQuillEditor(element: HTMLElement | string) {
 	// TODO: don't rerun this if already registered
 	Quill.register('modules/cursors', QuillCursors);
-	const realElement = element instanceof HTMLElement ? element : document.querySelector(element)!;
-	const quillWrapperElem = document.createElement('div');
-	realElement.appendChild(quillWrapperElem);
+
+	const quillEditor = new Quill(element, {
+		modules: {
+			cursors: true,
+			// cursors: {
+			//     transformOnTextChange: true,
+			// },
+			// toolbar: QUILL_TOOLBAR,
+			history: {
+				// Local undo shouldn't undo changes
+				// from remote users
+				userOnly: true
+			}
+		},
+		placeholder: 'Start collaborating...',
+		theme: 'bubble' // or 'snow'
+	});
+	return quillEditor;
 }

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { createCollaborativeQuillEditor } from '../../../../../e2ee-sync-library/src/index';
 	import 'quill/dist/quill.snow.css';
+	import { initializeQuillEditor } from './Note';
 
 	let noteElem: HTMLDivElement; // defaults to undefined
 
@@ -12,7 +13,11 @@
 			return;
 		}
 
-		const promise = createCollaborativeQuillEditor(noteElem, 'MyDocSvelteNew');
+		const promise = createCollaborativeQuillEditor(
+			noteElem,
+			'MyDocSvelteNew',
+			initializeQuillEditor
+		);
 		return async () => {
 			(await promise).deleteEditor();
 			console.log('deleted');

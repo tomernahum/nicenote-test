@@ -86,16 +86,18 @@ function initializeQuillEditor(element: HTMLElement | string) {
  * you must call `import "quill/dist/quill.snow.css"` or equiv yourself!
  */
 export async function createCollaborativeQuillEditor(
+    // TODO: this should be one params object
     domElement: HTMLElement | string,
     remoteDocId: string,
-    encryptionParams?: ProviderEncryptionConfig,
     initializeQuillEditorFunc: (
         element: HTMLElement | string
     ) => Quill = initializeQuillEditor,
     onConnectError: (error: Error) => void = () => {
         // alert("sorry you may be offline")
         console.error("YOU MAY BE OFFLINE")
-    }
+    },
+
+    encryptionParams?: ProviderEncryptionConfig
 ) {
     const realDomElement =
         domElement instanceof HTMLElement
