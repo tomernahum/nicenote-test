@@ -7,7 +7,7 @@ import { createRemoteDocProvider } from "./0-remote-provider"
 import "quill/dist/quill.snow.css"
 import {
     getNonSecretHardCodedKeyForTestingSymmetricEncryption,
-    ProviderEncryptionConfig,
+    type ProviderEncryptionConfig,
 } from "./1-crypto-update-factory"
 
 const QUILL_TOOLBAR = [
@@ -138,11 +138,11 @@ export async function createCollaborativeQuillEditor(
 
         // remove the dom element
         if (domElement instanceof HTMLElement) {
-            domElement.remove()
+            domElement.replaceChildren()
         } else {
             const element = document.querySelector(domElement)
             if (element) {
-                element.remove()
+                element.replaceChildren()
             } else {
                 console.error("App: Failed to delete editor! Element not found")
             }
