@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { createCollaborativeQuillEditor } from '../../../../../e2ee-sync-library/src/index';
 	import 'quill/dist/quill.snow.css';
-	// let props = $props();
 
 	let noteElem: HTMLDivElement; // defaults to undefined
 
