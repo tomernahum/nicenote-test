@@ -4,7 +4,7 @@ import QuillCursors from "quill-cursors"
 import * as Y from "yjs"
 import { createRemoteDocProvider } from "./0-remote-provider"
 
-import "quill/dist/quill.snow.css"
+// import "quill/dist/quill.snow.css"
 import {
     getNonSecretHardCodedKeyForTestingSymmetricEncryption,
     type ProviderEncryptionConfig,
@@ -90,6 +90,7 @@ function initializeQuillEditor(element: HTMLElement | string) {
 /**
  * @param domElement element query selector or HTMLElement
  * @param encryptionParams WARNING: if not specified, currently defaults to using publicly known key in place of secret key (done this way for ease of testing)
+ * you must call `import "quill/dist/quill.snow.css"` or equiv yourself!
  */
 export async function createCollaborativeQuillEditor(
     domElement: HTMLElement | string,
