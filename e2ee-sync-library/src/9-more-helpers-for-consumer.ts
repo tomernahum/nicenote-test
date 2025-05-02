@@ -58,7 +58,9 @@ const QUILL_TOOLBAR = [
     // }],
 ]
 function initializeQuillEditor(element: HTMLElement | string) {
+    // TODO: don't rerun this if already registered
     Quill.register("modules/cursors", QuillCursors)
+
     const quillEditor = new Quill(element, {
         modules: {
             cursors: true,
@@ -138,11 +140,13 @@ export async function createCollaborativeQuillEditor(
 
         // remove the dom element
         if (domElement instanceof HTMLElement) {
-            domElement.replaceChildren()
+            // domElement.replaceChildren()
+            domElement.remove()
         } else {
             const element = document.querySelector(domElement)
             if (element) {
-                element.replaceChildren()
+                // element.replaceChildren()
+                element.remove()
             } else {
                 console.error("App: Failed to delete editor! Element not found")
             }
@@ -155,6 +159,43 @@ export async function createCollaborativeQuillEditor(
         quillBinding,
         yBindingProvider: remoteDocYBindingProvider,
         deleteEditor,
+    }
+}
+
+/**
+ * WIP
+ * @param domElement element query selector or HTMLElement
+ * @param encryptionParams WARNING: if not specified, currently defaults to using publicly known key in place of secret key (done this way for ease of testing)
+ */
+export function createCollaborativeQuillEditorSync(
+    ...params: Parameters<typeof createCollaborativeQuillEditor>
+) {
+    // note: i did not look into AbortController (TODO)
+
+    let realDelete: (() => Promise<void>) | null = null // will be set when the editor is created
+    let isDeleted = false
+
+    const promise = createCollaborativeQuillEditor(...params)
+
+    promise.then((res) => {
+        realDelete = res.deleteEditor
+        if (isDeleted) {
+            console.warn(
+                "Deleting right after initialization since it was deleted"
+            )
+            realDelete()
+        }
+    })
+
+    return {
+        deleteEditor: () => {
+            isDeleted = true
+            if (realDelete) {
+                console.warn("deleting Editor!")
+                realDelete()
+            }
+        },
+        promise,
     }
 }
 

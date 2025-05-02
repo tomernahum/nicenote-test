@@ -18,6 +18,8 @@ import type { ProviderEncryptionConfig } from "./1-crypto-update-factory"
 
 type YUpdate = Uint8Array
 
+// TODO: maybe a synchronous version of this?
+
 /**
  * Bind a local yDoc to a remote shared doc
  * if mergeInitialState is true, the initial state of the local yDoc will be merged with the remote yDoc
@@ -41,6 +43,8 @@ export async function createRemoteDocProvider(
         broadcastSnapshot,
         // } = getProviderServerInterface(params.remoteDocId, params.encryptionParams)
     } = getProviderServerInterface(params.remoteDocId, params.encryptionParams)
+
+    // initialize all that we can before connecting to the server
 
     // "connect to the server doc"
     await connect().catch((error) => {
