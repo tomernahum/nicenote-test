@@ -2,12 +2,25 @@
 	import Note from '$lib/Note.svelte';
 </script>
 
-<Note />
-<br />
-<br />
-<Note />
+<ul>
+	<li>
+		<Note remoteDocId="MyDocSvelteNew" />
+	</li>
+	<li>
+		<Note remoteDocId="MyDocSvelteNew" />
+	</li>
+	<li>
+		<Note remoteDocId="MyDoc1" />
+	</li>
+	<li>
+		<Note remoteDocId="MyDoc2" />
+	</li>
+</ul>
 
 <br />
 
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<style>
+	li {
+		border: 1px solid #ccc;
+	}
+</style>

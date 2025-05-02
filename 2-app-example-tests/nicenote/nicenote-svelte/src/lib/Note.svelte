@@ -4,6 +4,8 @@
 	import 'quill/dist/quill.snow.css';
 	import { initializeQuillEditor } from './Note';
 
+	let props = $props<{ remoteDocId: string }>();
+
 	let noteElem: HTMLDivElement; // defaults to undefined
 
 	onMount(() => {
@@ -15,7 +17,7 @@
 
 		const promise = createCollaborativeQuillEditor(
 			noteElem,
-			'MyDocSvelteNew',
+			props.remoteDocId,
 			initializeQuillEditor
 		);
 		return async () => {
@@ -24,9 +26,11 @@
 		};
 	});
 
-	// TODO: allow this element to be used multiple times, without conflicting the query selector
+	// TODO: check official way to have multiple quills in one page
+	// then also catch enter key
+	// and in my app maybe make multiple yDocs be able to go into one server-seen doc (for privacy) (maybe subdocId)
 </script>
 
-<p>----Note:----</p>
-<div bind:this={noteElem} id="note"></div>
-<p>---End Note----</p>
+<!-- <p>----Note:----</p> -->
+<div bind:this={noteElem} id="note" style="overflow: visible;"></div>
+<!-- <p>---End Note----</p> -->

@@ -104,6 +104,7 @@ export async function createCollaborativeQuillEditor(
             ? domElement
             : document.querySelector(domElement)!
     const quillWrapperElem = document.createElement("div")
+    quillWrapperElem.style.overflow = "visible"
     realDomElement.appendChild(quillWrapperElem)
 
     const yDoc = new Y.Doc()
