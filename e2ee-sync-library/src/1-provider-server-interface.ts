@@ -109,7 +109,7 @@ export function getProviderServerInterface(
             // })
         },
         disconnect: async function () {
-            server.disconnect()
+            return await server.disconnect()
         },
 
         getRemoteUpdateList(forceRefresh = false) {

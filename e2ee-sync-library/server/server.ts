@@ -91,11 +91,19 @@ io.on("connection", (socket) => {
     // add an update to a doc
     socket.on("addUpdate", (docId: string, update: Uint8Array) => {
         console.log(socket.id, docId, "addUpdate")
-        const id = addDocOperation(docId, update)
-        // notify other clients listening to this doc
-        // socket.to(docId).emit("newUpdate", docId, update, id)
-        // notify this and other clients listening to this doc
-        io.to(docId).emit("newUpdate", docId, update, id)
+
+        if (typeof docId !== "string") {
+            console.error("DocId was not a string! may have been null")
+            // TODO, add method to notify client that their update request failed
+            return
+        }
+        try {
+            const id = addDocOperation(docId, update)
+            // notify this and other clients listening to this doc
+            io.to(docId).emit("newUpdate", docId, update, id)
+        } catch (error) {
+            console.error("Failed to add update!", error)
+        }
     })
 
     socket.on(

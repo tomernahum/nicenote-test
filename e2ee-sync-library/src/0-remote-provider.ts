@@ -149,8 +149,8 @@ export async function createRemoteDocProvider(
 
     return {
         awareness,
-        disconnect() {
-            disconnect()
+        async disconnect() {
+            return await disconnect()
         },
         internal: {
             sentUpdateCount,
