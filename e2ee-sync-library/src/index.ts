@@ -4,6 +4,6 @@ export {
     getNonSecretHardCodedKeyForTestingSymmetricEncryption,
 } from "./1-crypto-update-factory"
 
-export * from "./9-more-helpers-for-consumer"
+export * from "./9-more-ex-helpers-for-consumer"
 
 export {}

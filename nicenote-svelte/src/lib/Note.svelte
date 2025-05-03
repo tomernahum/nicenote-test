@@ -2,28 +2,37 @@
 	import { onMount } from 'svelte';
 	import { createCollaborativeQuillEditor } from '../../../e2ee-sync-library/src/index';
 	import 'quill/dist/quill.snow.css';
-	import { initializeQuillEditor } from './Note';
+	import { getInitializeQuillEditor } from './Note';
 
 	let props = $props<{ remoteDocId: string }>();
 
 	let noteElem: HTMLDivElement; // defaults to undefined
 
+	let editor: Awaited<ReturnType<typeof createCollaborativeQuillEditor>>;
+
 	onMount(() => {
+		// should not happen, since onMount should be called after noteElem is bound
 		if (!noteElem) {
-			// should not happen, since onMount should be called after noteElem is bound
 			console.error('tried to initialize quill editor before binding noteElem the wrapping div');
 			return;
 		}
 
+		// we may want to use something other than quill (like prosemirror) for the final app
 		const promise = createCollaborativeQuillEditor(
 			noteElem,
 			props.remoteDocId,
-			initializeQuillEditor
+			getInitializeQuillEditor()
 		);
 
-		promise.then((editor) => {
-			//
-			editor.yDoc;
+		promise.then((res) => {
+			editor = res;
+			editor.quillEditor.keyboard.addBinding(
+				{ key: 'Enter' },
+				{
+					empty: true
+				},
+				function (range, context) {}
+			);
 		});
 		return async () => {
 			(await promise).deleteEditor();

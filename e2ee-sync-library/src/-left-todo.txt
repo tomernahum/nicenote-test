@@ -2,8 +2,9 @@
 
 
 TODO Next:
-- Crypto
-- batching
+- finish crypto signing
+- time batching
+- change out console.info for console.verbose
 
 TODO:
 - clean up the console logs
