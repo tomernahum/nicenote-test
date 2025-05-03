@@ -2,6 +2,8 @@
     "cSpell.words": ["ciphertext", "prosemirror", "Toxiproxy", "ydoc"],
     "liveServer.settings.port": 5501,
     "material-icon-theme.folders.associations": {
-        "e2ee-sync-library": "Interface"
+        // https://raw.githubusercontent.com/material-extensions/vscode-material-icon-theme/main/images/folderIcons.png
+        "e2ee-sync-library": "Interface",
+        "nicenote-svelte": "App"
     }
 }

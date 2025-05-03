@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createCollaborativeQuillEditor } from '../../../../../e2ee-sync-library/src/index';
+	import { createCollaborativeQuillEditor } from '../../../e2ee-sync-library/src/index';
 	import 'quill/dist/quill.snow.css';
 	import { initializeQuillEditor } from './Note';
 
