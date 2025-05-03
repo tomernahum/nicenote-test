@@ -1,8 +1,8 @@
 import { decodeList, encodeList } from "../shared/binary-encoding-helpers"
-import { prettyUpdateObj, Bucket, Update, UpdateOptRow } from "./0-data-model"
+import { prettyUpdateObj, type Update, type UpdateOptRow } from "./0-data-model"
 import {
     createUpdateFactory,
-    ProviderEncryptionConfig,
+    type ProviderEncryptionConfig,
 } from "./1-crypto-update-factory"
 import { getServerInterface } from "./2-server-interface-hono-socketio"
 

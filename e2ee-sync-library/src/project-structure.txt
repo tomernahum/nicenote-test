@@ -18,4 +18,19 @@ on the server-side (/server) server.ts is the main file, which calls db.ts which
     - when I publish this whole thing on npm, I will let you pass in a custom 2-server-interface when creating the provider, and have it be a separate package
 
 
+-----------
 
+Y Doc -> Y doc updates (binary) -> convert to server format (including crypto) -> send to server
+Application -> 0-remote-provider -> (1-crypto-update-factory -> 2-server-interface)
+
+0-remote provider interfaces with the Y doc. It calls 1-provider-server-interface.
+1-provider-server-interface - encapsulates both 1-crypto-update-factory and 2-server-interface, and presents it as an interface to 0-remote-provider. it also implements caching from the server for some reason.
+
+
+also goes the other way to hear about updates
+also there is the notion of squashing/snapshotting 
+
+what we actually do though
+(Actual state changes -> Y Doc -> Y doc updates (binary) -> convert to server format (including crypto) -> optimistic caching -> send to server
+Application            0-remote-provider                    1-crypto-update-factory              1-provider-server-interface      2-server-interface)
+                                                            (         1-provider-server-interface                                                  )
