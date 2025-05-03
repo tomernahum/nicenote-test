@@ -20,6 +20,11 @@
 			props.remoteDocId,
 			initializeQuillEditor
 		);
+
+		promise.then((editor) => {
+			//
+			editor.yDoc;
+		});
 		return async () => {
 			(await promise).deleteEditor();
 			console.log('deleted');

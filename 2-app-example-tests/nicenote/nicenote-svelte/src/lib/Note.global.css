@@ -1,0 +1,11 @@
+/* Make the quill bubble buttons work over other elements */
+
+.ql-bubble .ql-tooltip {
+	z-index: 9999;
+	pointer-events: auto;
+}
+/* and just to be sure each button inside can be clicked */
+/* .ql-bubble .ql-tooltip .ql-action,
+.ql-bubble .ql-tooltip button {
+	pointer-events: auto;
+} */

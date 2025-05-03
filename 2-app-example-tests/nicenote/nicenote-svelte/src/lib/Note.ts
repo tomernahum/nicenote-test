@@ -2,6 +2,7 @@ import Quill from 'quill';
 import QuillCursors from 'quill-cursors';
 
 import 'quill/dist/quill.bubble.css';
+import './Note.global.css';
 
 // shoot, with bubble theme, toolbar is cut off in the div
 /*
