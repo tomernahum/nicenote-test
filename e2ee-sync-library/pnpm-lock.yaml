@@ -8,27 +8,25 @@ importers:
 
   .:
     dependencies:
-      lib0:
-        specifier: ^0.2.101
-        version: 0.2.102
-      quill:
-        specifier: ^2.0.3
-        version: 2.0.3
-      quill-cursors:
-        specifier: ^4.0.4
-        version: 4.0.4
       socket.io-client:
         specifier: ^4.8.1
         version: 4.8.1
       y-protocols:
         specifier: ^1.0.6
         version: 1.0.6(yjs@13.6.26)
-      y-quill:
-        specifier: ^1.0.0
-        version: 1.0.0(quill-cursors@4.0.4)(quill@2.0.3)(yjs@13.6.26)
       yjs:
         specifier: ^13.6.26
         version: 13.6.26
+    optionalDependencies:
+      quill:
+        specifier: ^2.0.3
+        version: 2.0.3
+      quill-cursors:
+        specifier: ^4.0.4
+        version: 4.0.4
+      y-quill:
+        specifier: ^1.0.0
+        version: 1.0.0(quill-cursors@4.0.4)(quill@2.0.3)(yjs@13.6.26)
 
 packages:
 
@@ -60,8 +58,8 @@ packages:
   isomorphic.js@0.2.5:
     resolution: {integrity: sha512-PIeMbHqMt4DnUP3MA/Flc0HElYjMXArsw1qwJZcm9sqR8mq3l8NYizFMty0pWwE/tzIGH3EKK5+jes5mAr85yw==}
 
-  lib0@0.2.102:
-    resolution: {integrity: sha512-g70kydI0I1sZU0ChO8mBbhw0oUW/8U0GHzygpvEIx8k+jgOpqnTSb/E+70toYVqHxBhrERD21TwD5QcZJQ40ZQ==}
+  lib0@0.2.105:
+    resolution: {integrity: sha512-5vtbuBi2P43ZYOfVMV+TZYkWEa0J9kijXirzEgrPA+nJDQCtMx805/rqW4G1nXbM9IRIhwW+OyNNgcQdbhKfSw==}
     engines: {node: '>=16'}
     hasBin: true
 
@@ -155,33 +153,41 @@ snapshots:
 
   engine.io-parser@5.2.3: {}
 
-  eventemitter3@5.0.1: {}
+  eventemitter3@5.0.1:
+    optional: true
 
-  fast-diff@1.3.0: {}
+  fast-diff@1.3.0:
+    optional: true
 
   isomorphic.js@0.2.5: {}
 
-  lib0@0.2.102:
+  lib0@0.2.105:
     dependencies:
       isomorphic.js: 0.2.5
 
-  lodash-es@4.17.21: {}
+  lodash-es@4.17.21:
+    optional: true
 
-  lodash.clonedeep@4.5.0: {}
+  lodash.clonedeep@4.5.0:
+    optional: true
 
-  lodash.isequal@4.5.0: {}
+  lodash.isequal@4.5.0:
+    optional: true
 
   ms@2.1.3: {}
 
-  parchment@3.0.0: {}
+  parchment@3.0.0:
+    optional: true
 
-  quill-cursors@4.0.4: {}
+  quill-cursors@4.0.4:
+    optional: true
 
   quill-delta@5.1.0:
     dependencies:
       fast-diff: 1.3.0
       lodash.clonedeep: 4.5.0
       lodash.isequal: 4.5.0
+    optional: true
 
   quill@2.0.3:
     dependencies:
@@ -189,6 +195,7 @@ snapshots:
       lodash-es: 4.17.21
       parchment: 3.0.0
       quill-delta: 5.1.0
+    optional: true
 
   socket.io-client@4.8.1:
     dependencies:
@@ -214,17 +221,18 @@ snapshots:
 
   y-protocols@1.0.6(yjs@13.6.26):
     dependencies:
-      lib0: 0.2.102
+      lib0: 0.2.105
       yjs: 13.6.26
 
   y-quill@1.0.0(quill-cursors@4.0.4)(quill@2.0.3)(yjs@13.6.26):
     dependencies:
-      lib0: 0.2.102
+      lib0: 0.2.105
       quill: 2.0.3
       quill-cursors: 4.0.4
       y-protocols: 1.0.6(yjs@13.6.26)
       yjs: 13.6.26
+    optional: true
 
   yjs@13.6.26:
     dependencies:
-      lib0: 0.2.102
+      lib0: 0.2.105
