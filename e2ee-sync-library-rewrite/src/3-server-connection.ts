@@ -9,8 +9,9 @@ import type {
 // this can be swapped out to use plain ws, webrtc, etc
 // 1-server-client wraps this, it's what's actually used to interact with the server
 
-type SealedUpdate = Uint8Array
-type DocId = string
+import { SealedUpdate, DocId } from "./-types"
+
+// type SealedUpdate = SealedUpdate // TODO: clean up
 
 export type BaseServerConnectionInterfaceShape = ReturnType<
     typeof getServerConnectionInterface
@@ -36,7 +37,7 @@ export function getServerConnectionInterface() {
 
     return {
         // may deprecate this flow of connecting first idk
-        connect: async (docId: string) => {
+        connect: async () => {
             socket.connect()
             return new Promise<void>((resolve, reject) => {
                 socket.on("connect", () => {
@@ -115,7 +116,7 @@ export function getServerConnectionInterface() {
         applySnapshot: async (
             docId: string,
             snapshot: Uint8Array,
-            lastUpdateRowToReplace: number
+            lastUpdateRowToReplace: number // may change to another indicator of what is in the snapshot. Valid if we never receive an update out of order from it's row... with current server implementation I think it should be fine, but not 100%
         ) => {
             socket.emit(
                 "applySnapshot",
