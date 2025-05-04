@@ -136,7 +136,7 @@ function getServerInterfaceWithTimeBatching(
         queuedSnapshots.splice(0, queuedSnapshots.length) // clear
     }
 
-    const intervalId = setInterval(
+    let intervalId = setInterval(
         onTimeToSendUpdates,
         timeBatchingConfigReal.timeBetweenUpdatesMs
     )
@@ -193,8 +193,16 @@ function getServerInterfaceWithTimeBatching(
     return {
         ...returnValuePart,
         getTimeBatchingConfig: () => timeBatchingConfigReal,
-        setTimeBatchingConfig: (newConfig) =>
-            (timeBatchingConfigReal = newConfig),
+
+        /** Change the time batching config. This will clear the existing interval and create a new one. */
+        setTimeBatchingConfig: (newConfig: typeof timeBatchingConfig) => {
+            timeBatchingConfigReal = newConfig
+            clearInterval(intervalId)
+            intervalId = setInterval(
+                onTimeToSendUpdates,
+                timeBatchingConfigReal.timeBetweenUpdatesMs
+            )
+        },
     }
 }
 

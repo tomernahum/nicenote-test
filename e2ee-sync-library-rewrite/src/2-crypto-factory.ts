@@ -19,10 +19,26 @@ export interface CryptoFactory {
     // may be able to just return cryptoConfig instead, not 100% - ok yes but only since it's an object instead of a literal. I'll keep this to be explicit though
 }
 
+// todo: maybe narrow the types
+type AESKey = CryptoKey
+type HMACKey = CryptoKey //HMAC wip might end up being different signing algorithm
 export type CryptoConfig = {
-    mainKey: CryptoKey
-    validOldKeys: CryptoKey[]
-} // will be defined in 1-crypto-update-factory equivalent
+    mainKey: AESKey
+    validOldKeys: AESKey[]
+} & (
+    | { useWriteSignaturesForServer: false; serverSignatureSecretKey?: HMACKey }
+    | { useWriteSignaturesForServer: true; serverSignatureSecretKey: HMACKey }
+) &
+    (
+        | {
+              useWriteSignaturesForClients: false
+              clientSignatureSecretKey?: HMACKey
+          }
+        | {
+              useWriteSignaturesForClients: true
+              clientSignatureSecretKey: HMACKey
+          }
+    )
 
 export function createCryptoFactory(cryptoConfig: CryptoConfig): CryptoFactory {
     let config = cryptoConfig
@@ -45,7 +61,14 @@ export function createCryptoFactory(cryptoConfig: CryptoConfig): CryptoFactory {
         config = newConfig
     } // might refactor how this is managed. Note that cryptoConfig needs to change periodically to rotate keys to provide PCS
 }
-
+export async function getInsecureCryptoConfigForTesting(): Promise<CryptoConfig> {
+    return {
+        mainKey: await getNonSecretHardCodedKeyForTestingSymmetricEncryption(),
+        validOldKeys: [],
+        useWriteSignaturesForServer: false,
+        useWriteSignaturesForClients: false,
+    }
+}
 async function getNonSecretHardCodedKeyForTestingSymmetricEncryption(
     seed: number = 0
 ) {
@@ -60,9 +83,16 @@ async function getNonSecretHardCodedKeyForTestingSymmetricEncryption(
         ["encrypt", "decrypt"]
     )
 }
-export async function getInsecureCryptoConfigForTesting(): Promise<CryptoConfig> {
-    return {
-        mainKey: await getNonSecretHardCodedKeyForTestingSymmetricEncryption(),
-        validOldKeys: [],
-    }
+export async function generateSymmetricEncryptionKey(
+    extractable: boolean = true
+) {
+    const key = await crypto.subtle.generateKey(
+        {
+            name: "AES-GCM",
+            length: 256,
+        },
+        extractable,
+        ["encrypt", "decrypt"] // key usages
+    )
+    return key
 }
