@@ -253,7 +253,7 @@ function createEncryptionLogic(config: Config) {
             ) // will throw if invalid key, data, or if tampering detected (authenticated encryption)
             // our overall system is planned to have redundant HMAC verification because not everyone who is able to decrypt should be able to successfully encrypt like is the assumption of symmetric encryption.
             // wait I could have used authenticated asymmetric construction couldn't I have. but symmetric does have better support in web crypto + asymmetric would need to be wrapping symmetric anyways. but we basically want a read secret key and a write secret key...
-            // no it's not the same: asymmetric allows write-noread clients, this does not. Could have still used it but it is actually more complex anyway
+            // no it's not the same: asymmetric allows write-noread clients, this does not. Could have still used it but it is actually more complex anyway. Also read-only clients can't verify signatures with a symmetric signature system... oops
 
             return new Uint8Array(decrypted)
         } catch (e) {
