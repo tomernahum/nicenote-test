@@ -316,6 +316,15 @@ export async function getNonSecretHardCodedKeyForTestingSymmetricEncryption(
     )
 }
 
+export async function getInsecureEncryptionConfigForTesting(): Promise<ProviderEncryptionConfig> {
+    return {
+        mainKey: await getNonSecretHardCodedKeyForTestingSymmetricEncryption(),
+        validOldKeys: [],
+        useWriteSignaturesForServer: false,
+        useWriteSignaturesForClients: false,
+    }
+}
+
 function createSigningLogic(config: Config) {
     // our system uses two separate signing steps, to verify that someone is allowed to write to a document / send a message
     // 1. pre-encryption, used to verify that a sent message is legitimate by the clients. The key for this is secret between writer-permissioned clients of a document

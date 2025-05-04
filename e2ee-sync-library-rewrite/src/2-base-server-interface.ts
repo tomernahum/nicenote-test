@@ -1,26 +1,33 @@
 import { io, Socket } from "socket.io-client"
+
+// shared code between server and client. server specific.
 import type {
     ServerToClientEvents,
     ClientToServerEvents,
-} from "../shared/shared-types"
-import { decodeOperations } from "../shared/serializer"
+} from "../shared-server-client/shared-types"
 
-// to be called by e2ee provider, with already encrypted data
-// then this can be swapped out to use plain ws, webrtc, etc
+// to be called  with already encrypted/processed data
+// this can be swapped out to use plain ws, webrtc, etc
 
-type SealedUpdate = Uint8Array // see crypto-update-factory.ts
+type SealedUpdate = Uint8Array
+type DocId = string
 
-// export type BaseServerInterfaceInterface = ReturnType<typeof getServerInterface>
+export type BaseServerInterfaceShape = ReturnType<typeof getServerInterface>
 
+// this version of the server interface uses socket.io
 export function getServerInterface() {
-    // const hono = hc<HonoServer>("http://localhost:3000")
     const SERVER_URL = "http://localhost:3000"
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> =
         io(SERVER_URL)
+
+    // const updateListeners = new Map<
+    //     string,
+    //     (sealedMessage: SealedUpdate, rowId: number) => void
+    // >()
+
     return {
         // may deprecate this flow of connecting first idk
         connect: async (docId: string) => {
-            // todo ping hono?
             socket.connect()
             return new Promise<void>((resolve, reject) => {
                 socket.on("connect", () => {
@@ -50,7 +57,7 @@ export function getServerInterface() {
             socket.emit("addUpdate", docId, update)
         },
 
-        /** NOTE: this only supports one listener per doc (currently - TODO)
+        /** NOTE: this only supports one listener per doc (currently - TODO) can easily fix this by maintaining list of listeners
          * works fine in our app if we only have one provider active per single doc - or multiple which we never unsubscribe from
          */
         subscribeToRemoteUpdates: (
@@ -71,43 +78,19 @@ export function getServerInterface() {
                 // NOTE: removes all listeners for this doc across our app, hence the above note
             }
         },
-        getRemoteUpdateList: async (docId: string) => {
-            const response = await fetch(
-                "http://localhost:3000/getAllDocOperations/" + docId
-            )
-            // const data = await response.json() // TODO. need to change the encoding for this. currently wont work as expected
-            const dataBinary = await response.arrayBuffer()
-            // console.log("response binary", dataBinary)
-            const data = decodeOperations(new Uint8Array(dataBinary))
-            // console.log("data", data)
-
-            type ExpectedDataType = {
-                id: number
-                operation: Uint8Array
-            }[]
-            // validate it
-            if (
-                !Array.isArray(data) ||
-                !data.every(
-                    (item) =>
-                        typeof item.id === "number" &&
-                        item.operation instanceof Uint8Array
-                )
-            ) {
-                throw new Error(
-                    "Invalid response format, response was: " +
-                        JSON.stringify(data)
-                )
-            }
-            // console.log(Date.now(), "got server state")
-            // return data as ExpectedDataType
-
-            // TODO: make this consistent in socketio too
-
-            return data.map(({ id, operation }) => ({
-                rowId: id,
-                sealedMessage: operation,
-            }))
+        getRemoteUpdateList: (docId: string) => {
+            return new Promise<
+                { rowId: number; sealedMessage: SealedUpdate }[]
+            >((resolve, reject) => {
+                socket.emit("getDoc", docId, (data) => {
+                    resolve(
+                        data.map(({ id, operation }) => ({
+                            rowId: id,
+                            sealedMessage: operation,
+                        }))
+                    )
+                })
+            })
         },
 
         applySnapshot: async (

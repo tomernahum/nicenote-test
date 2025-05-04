@@ -6,13 +6,48 @@ import {
     removeAwarenessStates,
 } from "y-protocols/awareness.js"
 
-function test(yDoc: Y.Doc, mergeInitialState: boolean) {
-    const provider = createBaseYjsProvider(yDoc, () => {
+import { getProviderServerInterface } from "../../e2ee-sync-library/src/1-provider-server-interface"
+import { getInsecureEncryptionConfigForTesting } from "../../e2ee-sync-library/src/1-crypto-update-factory"
+import { type Update } from "../../e2ee-sync-library/src/0-data-model"
+
+async function test(yDoc: Y.Doc, mergeInitialState: boolean) {
+    const localYProvider = createBaseYjsProvider(yDoc, () => {
         return
     })
+    const server = getProviderServerInterface(
+        "docId",
+        await getInsecureEncryptionConfigForTesting()
+    )
+
+    await server.connect()
+
+    const remoteDocStateUponConnection = await server.getRemoteUpdateList()
+
+    localYProvider.applyRemoteUpdates(
+        decodeLibUpdatesIntoYjsProviderUpdates(remoteDocStateUponConnection)
+    )
 
     if (mergeInitialState) {
+        const differingInitialUpdates =
+            localYProvider.getChangesNotAppliedToAnotherYDoc(
+                remoteDocStateUponConnection
+                    .filter((update) => update.bucket === "doc")
+                    .map((update) => update.operation)
+            )
+        differingInitialUpdates.forEach((update) => {
+            server.broadcastUpdate({ bucket: "doc", operation: update })
+        })
     }
+}
+
+function decodeLibUpdatesIntoYjsProviderUpdates(updates: Update[]): {
+    type: "doc" | "awareness"
+    operation: Uint8Array
+}[] {
+    return updates.map((update) => ({
+        type: update.bucket === "doc" ? "doc" : "awareness",
+        operation: update.operation,
+    }))
 }
 
 /**
@@ -95,7 +130,9 @@ function createBaseYjsProvider(
 
         // yDoc helper functions
         // WIP
-        mergeInChangesFromAnotherYDoc: (remoteDoc: Y.Doc | Uint8Array[]) => {
+        getChangesNotAppliedToAnotherYDoc: (
+            remoteDoc: Y.Doc | Uint8Array[]
+        ) => {
             const remoteDocReal =
                 remoteDoc instanceof Y.Doc
                     ? remoteDoc
@@ -103,7 +140,13 @@ function createBaseYjsProvider(
                           Y.applyUpdate(acc, update)
                           return acc
                       }, new Y.Doc())
+
+            // calculate the diff between the onlineDoc and the local yDoc
+            const remoteStateVector = Y.encodeStateVector(remoteDocReal)
+            const update = Y.encodeStateAsUpdate(yDoc, remoteStateVector) // only writes the changes missing from remoteStateVector
+
+            const updateIsEmpty = update.toString() === "0,0"
+            return updateIsEmpty ? [] : [update]
         },
-        getChangesNotAppliedToAnotherYDoc: () => {},
     }
 }

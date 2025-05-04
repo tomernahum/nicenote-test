@@ -1,6 +1,6 @@
 
-
-
+maybe buckets was a bad idea. Just encode bucket name in the update before calling the main system, then decode to interact with yjs. Main system would only deal with operation: uint8array. Or maybe main system should support encoding/decoding any wide range of data structure for operation, not just (bucket, uint8array)
+----
 TODO Next:
 - finish crypto signing
 - time batching
