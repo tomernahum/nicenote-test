@@ -14,7 +14,7 @@ import { SealedUpdate, DocId } from "./-types"
 // type SealedUpdate = SealedUpdate // TODO: clean up
 
 export type BaseServerConnectionInterfaceShape = ReturnType<
-    typeof getServerConnectionInterface
+    typeof getBaseServerConnectionInterface
 >
 // note: traditional method: interface, function/class implements interface
 
@@ -27,7 +27,7 @@ const updateListeners = new Map<
 
 const serverConnections: string[] = []
 
-export function getServerConnectionInterface() {
+export function getBaseServerConnectionInterface() {
     const SERVER_URL = "http://localhost:3000"
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> =
         io(SERVER_URL)

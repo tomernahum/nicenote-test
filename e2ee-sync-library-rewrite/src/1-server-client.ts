@@ -6,10 +6,17 @@
 
 import { ClientUpdate, DocId } from "./-types"
 import { bindFirst, BoundFirstAll } from "./-utils"
-import { CryptoFactory } from "./2-crypto-factory"
-import { BaseServerConnectionInterfaceShape } from "./3-server-connection"
+import {
+    createCryptoFactory,
+    CryptoConfig,
+    CryptoFactory,
+} from "./2-crypto-factory"
+import {
+    BaseServerConnectionInterfaceShape,
+    getBaseServerConnectionInterface,
+} from "./3-server-connection"
 
-export function getBasicEncryptedServerInterface(
+function getBasicEncryptedServerInterface(
     server: BaseServerConnectionInterfaceShape,
     crypto: CryptoFactory
 ) {
@@ -40,8 +47,22 @@ export function getBasicEncryptedServerInterface(
                     callback(decryptedUpdates, rowId)
                 }
             ),
-        getRemoteUpdateList: (docId: DocId) =>
-            server.getRemoteUpdateList(docId),
+        getRemoteUpdateList: async (docId: DocId) => {
+            const sealedUpdates = await server.getRemoteUpdateList(docId)
+            const decryptedUpdatesFinal = await Promise.all(
+                sealedUpdates.map(async (sealedUpdate) => {
+                    const decryptedUpdates =
+                        await crypto.sealedMessageToClientMessages(
+                            sealedUpdate.sealedMessage
+                        )
+                    return decryptedUpdates.map((update) => ({
+                        update,
+                        rowId: sealedUpdate.rowId,
+                    }))
+                })
+            )
+            return decryptedUpdatesFinal.flat()
+        },
 
         /** @param updates recommended to be one update per bucket */
         applySnapshot: async (
@@ -57,7 +78,7 @@ export function getBasicEncryptedServerInterface(
     }
 }
 
-export function getServerInterfaceWithTimeBatching(
+function getServerInterfaceWithTimeBatching(
     docId: DocId,
     server: BaseServerConnectionInterfaceShape,
     crypto: CryptoFactory, // takes cryptoConfig. might refactor how it is passed.
@@ -174,5 +195,26 @@ export function getServerInterfaceWithTimeBatching(
         getTimeBatchingConfig: () => timeBatchingConfigReal,
         setTimeBatchingConfig: (newConfig) =>
             (timeBatchingConfigReal = newConfig),
+    }
+}
+
+export function getServerInterface(
+    docId: DocId,
+    cryptoConfig: CryptoConfig,
+    timeBatchingConfig: Parameters<typeof getServerInterfaceWithTimeBatching>[3]
+) {
+    const serverConnectionInterface = getBaseServerConnectionInterface()
+    const cryptoFactory = createCryptoFactory(cryptoConfig)
+    const server = getServerInterfaceWithTimeBatching(
+        docId,
+        serverConnectionInterface,
+        cryptoFactory,
+        timeBatchingConfig
+    )
+    return {
+        ...server,
+        getCryptoConfig: () => server.crypto.getCryptoConfig(),
+        setCryptoConfig: (newConfig: CryptoConfig) =>
+            server.crypto.changeCryptoConfig(newConfig),
     }
 }

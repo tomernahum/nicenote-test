@@ -45,3 +45,24 @@ export function createCryptoFactory(cryptoConfig: CryptoConfig): CryptoFactory {
         config = newConfig
     } // might refactor how this is managed. Note that cryptoConfig needs to change periodically to rotate keys to provide PCS
 }
+
+async function getNonSecretHardCodedKeyForTestingSymmetricEncryption(
+    seed: number = 0
+) {
+    const seedArray = new Uint8Array(16)
+    seedArray.set([seed])
+
+    return await crypto.subtle.importKey(
+        "raw",
+        seedArray,
+        { name: "AES-GCM", length: 256 },
+        true,
+        ["encrypt", "decrypt"]
+    )
+}
+export async function getInsecureCryptoConfigForTesting(): Promise<CryptoConfig> {
+    return {
+        mainKey: await getNonSecretHardCodedKeyForTestingSymmetricEncryption(),
+        validOldKeys: [],
+    }
+}

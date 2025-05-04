@@ -6,48 +6,70 @@ import {
     removeAwarenessStates,
 } from "y-protocols/awareness.js"
 
-import { getProviderServerInterface } from "../../e2ee-sync-library/src/1-provider-server-interface"
-import { getInsecureEncryptionConfigForTesting } from "../../e2ee-sync-library/src/1-crypto-update-factory"
+import { getInsecureCryptoConfigForTesting } from "./2-crypto-factory"
 import { type Update } from "../../e2ee-sync-library/src/0-data-model"
+import { getServerInterface } from "./1-server-client"
 
 async function test(yDoc: Y.Doc, mergeInitialState: boolean) {
     const localYProvider = createBaseYjsProvider(yDoc, () => {
         return
     })
-    const server = getProviderServerInterface(
-        "docId",
-        await getInsecureEncryptionConfigForTesting()
+
+    const server = getServerInterface(
+        "my-docId",
+        await getInsecureCryptoConfigForTesting(),
+        {
+            timeBetweenUpdatesMs: 100,
+            sendUpdatesToServerWhenNoUserUpdate: true,
+        }
     )
 
     await server.connect()
 
-    const remoteDocStateUponConnection = await server.getRemoteUpdateList()
+    const remoteDocUpdatesUponConnection = await server.getRemoteUpdateList()
+    const decodedRemoteDocUpdatesUponConnection =
+        remoteDocUpdatesUponConnection.map((libUpdate) =>
+            libUpdateToYjsProviderUpdateCodec().decode(libUpdate.update)
+        )
 
-    localYProvider.applyRemoteUpdates(
-        decodeLibUpdatesIntoYjsProviderUpdates(remoteDocStateUponConnection)
-    )
-
+    localYProvider.applyRemoteUpdates(decodedRemoteDocUpdatesUponConnection)
     if (mergeInitialState) {
+        const remoteDocOnlyUpdates = decodedRemoteDocUpdatesUponConnection
+            .filter((update) => update.type === "doc")
+            .map((update) => update.operation)
         const differingInitialUpdates =
             localYProvider.getChangesNotAppliedToAnotherYDoc(
-                remoteDocStateUponConnection
-                    .filter((update) => update.bucket === "doc")
-                    .map((update) => update.operation)
+                remoteDocOnlyUpdates
             )
-        differingInitialUpdates.forEach((update) => {
-            server.broadcastUpdate({ bucket: "doc", operation: update })
-        })
+        server.addUpdates(
+            differingInitialUpdates.map((update) => {
+                const encodedUpdate =
+                    libUpdateToYjsProviderUpdateCodec().encode({
+                        type: "doc",
+                        operation: update,
+                    })
+                return encodedUpdate
+            })
+        )
     }
 }
 
-function decodeLibUpdatesIntoYjsProviderUpdates(updates: Update[]): {
-    type: "doc" | "awareness"
-    operation: Uint8Array
-}[] {
-    return updates.map((update) => ({
-        type: update.bucket === "doc" ? "doc" : "awareness",
-        operation: update.operation,
-    }))
+// TODO //WIP // fake data
+function libUpdateToYjsProviderUpdateCodec() {
+    return {
+        encode: (libUpdate: {
+            type: "doc" | "awareness"
+            operation: Uint8Array
+        }) => {
+            return libUpdate.operation
+        },
+        decode: (libUpdate: Uint8Array) => {
+            return {
+                type: "doc",
+                operation: libUpdate,
+            } as const
+        },
+    }
 }
 
 /**
