@@ -81,7 +81,8 @@ function initializeQuillEditor(element: HTMLElement | string) {
 }
 
 /**
- * Creates a quill editor + sets up the yjs binding and remote provider. You can pass in your own function to initialize the quill editor. You can also call the parts for more control/customization, this is partially meant as a demo/starting point.
+ * Creates a quill editor + sets up the yjs binding and remote provider. You can pass in your own function to initialize the quill editor.
+ * This is mostly meant as a demo/starting point. You can implement your own version of this function yourself
  * @param domElement element query selector or HTMLElement
  * @param encryptionParams WARNING: if not specified, currently defaults to using publicly known key in place of secret key (done this way for ease of testing)
  * you must call `import "quill/dist/quill.snow.css"` or equiv yourself!

@@ -53,6 +53,7 @@ export async function prettyUpdateString(update: UpdateFlex) {
     return out
 }
 
+//* This function not written with cryptographic security in mind, just for display purposes */
 async function hashBinary(buffer: Uint8Array) {
     const hashed = Array.from(new Uint8Array(buffer))
         .map((b) => b.toString(16).padStart(2, "0"))
