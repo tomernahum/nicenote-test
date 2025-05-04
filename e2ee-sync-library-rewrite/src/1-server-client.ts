@@ -71,6 +71,8 @@ export function getServerInterfaceWithTimeBatching(
     }
 ) {
     let timeBatchingConfigReal = timeBatchingConfig
+    let connected = false
+
     const basicInterface = getBasicEncryptedServerInterface(server, crypto)
 
     const queuedUpdates: {
@@ -84,6 +86,8 @@ export function getServerInterfaceWithTimeBatching(
     }[] = []
 
     async function onTimeToSendUpdates() {
+        if (!connected) return
+
         const updatesToSend = queuedUpdates.map(({ update }) => update).flat()
         // just send the last snapshot if there are multiple
         const snapshotToSend = queuedSnapshots.at(-1)
@@ -111,7 +115,7 @@ export function getServerInterfaceWithTimeBatching(
         queuedSnapshots.splice(0, queuedSnapshots.length) // clear
     }
 
-    setInterval(
+    const intervalId = setInterval(
         onTimeToSendUpdates,
         timeBatchingConfigReal.timeBetweenUpdatesMs
     )
@@ -143,7 +147,8 @@ export function getServerInterfaceWithTimeBatching(
             return promise
         },
 
-        // May want to time-batch these too?
+        // Todo maybe: May want to time-batch the reading functions too? (Or even the connection?)
+        // these will pretty much be called once each per doc, after connection. though maybe it will one day be used in an unexpected way
         subscribeToRemoteUpdates: bindFirst(
             basicInterface.subscribeToRemoteUpdates,
             docId
@@ -153,9 +158,16 @@ export function getServerInterfaceWithTimeBatching(
             docId
         ),
 
-        // maybe even these?
-        connect: basicInterface.connect,
-        disconnect: basicInterface.disconnect,
+        connect: async () => {
+            await basicInterface.connect()
+            connected = true
+        },
+        // TODO: maybe make disconnect based on docId, because right now it will possibly disconnect anything else with the same instance of BaseServerConnectionInterfaceShape, and may not clear their interval
+        disconnect: () => {
+            clearInterval(intervalId)
+            connected = false
+            return basicInterface.disconnect()
+        },
     }
     return {
         ...returnValuePart,

@@ -1,4 +1,7 @@
 
+you know, for even more obscurity we could make every update a snapshot (that way server can't distinguish updates and snapshots) But what if snapshots overlap/overwrite each other? well, we could send new clients all snapshots from the last 10 or 30 seconds, they will be able to merge them properly. any snapshot that was not aware of snapshots that came in >30 seconds ago will still overwrite. but that wouldn't be likely to happen. The cost of this though is that snapshots may be bigger than updates. though padding everything to max doc size would be good for obscurity too.
+
+---
 maybe buckets was a bad idea. Just encode bucket name in the update before calling the main system, then decode to interact with yjs. Main system would only deal with operation: uint8array. Or maybe main system should support encoding/decoding any wide range of data structure for operation, not just (bucket, uint8array)
 ----
 TODO Next:
