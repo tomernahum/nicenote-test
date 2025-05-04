@@ -4,7 +4,7 @@
 //     applyRemoteUpdate: (update: LocalUpdate) => void
 // }
 
-import { BaseServerInterfaceShape } from "./2-base-server-interface"
+import { BaseServerConnectionInterfaceShape } from "./2-server-connection"
 
 // ;``
 type DocId = string
@@ -16,12 +16,16 @@ export type EncryptionConfig = {
 export function getServerInterface(
     docId: DocId,
     encryptionConfig: EncryptionConfig,
-    server: BaseServerInterfaceShape
+    server: BaseServerConnectionInterfaceShape
 ) {
     /*returned*/ function connect() {
         return server.connect(docId)
     }
+    function disconnect() {
+        return server.disconnect()
+    }
     return {
         connect,
+        disconnect,
     }
 }

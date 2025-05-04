@@ -1,6 +1,5 @@
 import { io, Socket } from "socket.io-client"
 
-// shared code between server and client. server specific.
 import type {
     ServerToClientEvents,
     ClientToServerEvents,
@@ -8,22 +7,32 @@ import type {
 
 // to be called  with already encrypted/processed data
 // this can be swapped out to use plain ws, webrtc, etc
+// 1-server-client wraps this, it's what's actually used to interact with the server
 
 type SealedUpdate = Uint8Array
 type DocId = string
 
-export type BaseServerInterfaceShape = ReturnType<typeof getServerInterface>
+export type BaseServerConnectionInterfaceShape = ReturnType<
+    typeof getServerConnectionInterface
+>
+// note: traditional method: interface, function/class implements interface
 
 // this version of the server interface uses socket.io
-export function getServerInterface() {
+
+const updateListeners = new Map<
+    DocId,
+    (sealedMessage: SealedUpdate, rowId: number) => void
+>()
+
+const serverConnections: string[] = []
+
+export function getServerConnectionInterface() {
     const SERVER_URL = "http://localhost:3000"
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> =
         io(SERVER_URL)
 
-    // const updateListeners = new Map<
-    //     string,
-    //     (sealedMessage: SealedUpdate, rowId: number) => void
-    // >()
+    const myId = crypto.randomUUID()
+    serverConnections.push(myId)
 
     return {
         // may deprecate this flow of connecting first idk
@@ -44,12 +53,19 @@ export function getServerInterface() {
                 })
             })
         },
+
+        /** If all instances of serverConnectionInterface are disconnected, the underlying socketio/websocket connection to the server will be closed  */
         disconnect: () => {
-            socket.disconnect()
             return new Promise<void>((resolve) => {
-                socket.on("disconnect", () => {
+                serverConnections.splice(serverConnections.indexOf(myId), 1)
+                if (serverConnections.length === 0) {
+                    socket.disconnect()
+                    socket.on("disconnect", () => {
+                        resolve()
+                    })
+                } else {
                     resolve()
-                })
+                }
             })
         },
 
@@ -57,25 +73,28 @@ export function getServerInterface() {
             socket.emit("addUpdate", docId, update)
         },
 
-        /** NOTE: this only supports one listener per doc (currently - TODO) can easily fix this by maintaining list of listeners
-         * works fine in our app if we only have one provider active per single doc - or multiple which we never unsubscribe from
-         */
         subscribeToRemoteUpdates: (
             docId: string,
             callback: (sealedMessage: SealedUpdate, rowId: number) => void
         ) => {
+            updateListeners.set(docId, callback)
+
             socket.emit("startListeningToDoc", docId)
             socket.on(
                 "newUpdate",
                 (updateDocId: string, update: SealedUpdate, rowId) => {
                     if (updateDocId !== docId) return
-                    callback(new Uint8Array(update), rowId) // sometimes/always it returns a raw array buffer even though it's not supposed to
+
+                    callback(new Uint8Array(update), rowId)
+                    // sometimes/always it returns a raw array buffer even though it's not supposed to, so we convert it
                 }
             )
 
             return () => {
-                socket.emit("stopListeningToDoc", docId)
-                // NOTE: removes all listeners for this doc across our app, hence the above note
+                updateListeners.delete(docId)
+                if ((updateListeners.get(docId) || []).length === 0) {
+                    socket.emit("stopListeningToDoc", docId)
+                }
             }
         },
         getRemoteUpdateList: (docId: string) => {
