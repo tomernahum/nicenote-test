@@ -6,36 +6,42 @@ type ClientMessage = ClientUpdate
 type SealedMessage = SealedUpdate
 
 export interface CryptoFactory {
+    /*This will still generate a padded message even from an empty array of updates*/
     clientMessagesToSealedMessage: (
         clientMessages: ClientMessage[]
     ) => Promise<SealedMessage>
     sealedMessageToClientMessages: (
         sealedMessage: SealedMessage
     ) => Promise<ClientMessage[]>
-    changeEncryptionConfig: (newConfig: EncryptionConfig) => void
+
+    getCryptoConfig: () => CryptoConfig
+    changeCryptoConfig: (newConfig: CryptoConfig) => void
+    // may be able to just return cryptoConfig instead, not 100% - ok yes but only since it's an object instead of a literal. I'll keep this to be explicit though
 }
 
-export type EncryptionConfig = {
+export type CryptoConfig = {
     mainKey: CryptoKey
     validOldKeys: CryptoKey[]
 } // will be defined in 1-crypto-update-factory equivalent
 
-export function createCryptoFactory(encryptionConfig: EncryptionConfig) {
-    let config = encryptionConfig
+export function createCryptoFactory(cryptoConfig: CryptoConfig): CryptoFactory {
+    let config = cryptoConfig
     return {
         clientMessagesToSealedMessage,
         sealedMessageToClientMessages,
 
-        encryptionConfig: config,
-        changeEncryptionConfig,
+        getCryptoConfig: () => config,
+        changeCryptoConfig,
     }
     async function clientMessagesToSealedMessage(
         clientMessages: ClientMessage[]
-    ) {}
-    async function sealedMessageToClientMessages(
-        sealedMessage: SealedMessage
-    ) {}
-    function changeEncryptionConfig(newConfig: EncryptionConfig) {
-        config = newConfig
+    ) {
+        return new Uint8Array()
     }
+    async function sealedMessageToClientMessages(sealedMessage: SealedMessage) {
+        return []
+    }
+    function changeCryptoConfig(newConfig: CryptoConfig) {
+        config = newConfig
+    } // might refactor how this is managed. Note that cryptoConfig needs to change periodically to rotate keys to provide PCS
 }

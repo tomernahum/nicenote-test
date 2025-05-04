@@ -5,6 +5,7 @@
 // }
 
 import { ClientUpdate, DocId } from "./-types"
+import { bindFirst, BoundFirstAll } from "./-utils"
 import { CryptoFactory } from "./2-crypto-factory"
 import { BaseServerConnectionInterfaceShape } from "./3-server-connection"
 
@@ -18,10 +19,11 @@ export function getBasicEncryptedServerInterface(
 
         connect: () => server.connect(),
         disconnect: () => server.disconnect(),
-        addUpdate: async (docId: DocId, update: ClientUpdate) => {
-            const sealedUpdate = await crypto.clientMessagesToSealedMessage([
-                update,
-            ])
+
+        addUpdates: async (docId: DocId, updates: ClientUpdate[]) => {
+            const sealedUpdate = await crypto.clientMessagesToSealedMessage(
+                updates
+            )
             return server.addUpdate(docId, sealedUpdate)
         },
         subscribeToRemoteUpdates: (
@@ -45,12 +47,120 @@ export function getBasicEncryptedServerInterface(
         applySnapshot: async (
             docId: DocId,
             updates: ClientUpdate[],
-            lastUpdateRowToReplace: number // may change. see 3-
+            lastUpdateRowToReplace: number // may change. see 3-server-connection.ts
         ) => {
             const sealedUpdate = await crypto.clientMessagesToSealedMessage(
                 updates
             )
             server.applySnapshot(docId, sealedUpdate, lastUpdateRowToReplace)
         },
+    }
+}
+
+export function getServerInterfaceWithTimeBatching(
+    docId: DocId,
+    server: BaseServerConnectionInterfaceShape,
+    crypto: CryptoFactory, // takes cryptoConfig. might refactor how it is passed.
+    timeBatchingConfig: {
+        timeBetweenUpdatesMs: number
+        sendUpdatesToServerWhenNoUserUpdate: boolean // if true, will send an update to the server even if there are no new updates from the user, this is done to obfuscate to the server when/how often the user is making updates (eg how much they are typing)
+        // TODO maybe: if user is not generating updates, send updates periodically but not as frequently as if they are generating updates
+
+        // minTimeBetweenUpdatesMs: number,
+        // maxTimeBetweenUpdatesMs: number | "unlimited",
+    }
+) {
+    let timeBatchingConfigReal = timeBatchingConfig
+    const basicInterface = getBasicEncryptedServerInterface(server, crypto)
+
+    const queuedUpdates: {
+        update: ClientUpdate[]
+        promiseResolver: () => void
+    }[] = []
+    const queuedSnapshots: {
+        updates: ClientUpdate[]
+        lastUpdateRowToReplace: number
+        promiseResolver: () => void
+    }[] = []
+
+    async function onTimeToSendUpdates() {
+        const updatesToSend = queuedUpdates.map(({ update }) => update).flat()
+        // just send the last snapshot if there are multiple
+        const snapshotToSend = queuedSnapshots.at(-1)
+
+        // Todo maybe: we could merge the update into the snapshot so that server doesn't know if an update was made at time a snapshot was made (server has to know when a snapshot happens)
+        if (
+            updatesToSend.length > 0 ||
+            timeBatchingConfigReal.sendUpdatesToServerWhenNoUserUpdate
+        ) {
+            await basicInterface.addUpdates(docId, updatesToSend) // this will encrypt them all into one message to the server
+        }
+        if (snapshotToSend) {
+            await basicInterface.applySnapshot(
+                docId,
+                snapshotToSend.updates,
+                snapshotToSend.lastUpdateRowToReplace
+            )
+        }
+
+        // resolve promises
+        queuedUpdates.forEach(({ promiseResolver }) => promiseResolver())
+        queuedUpdates.splice(0, queuedUpdates.length) // clear
+
+        queuedSnapshots.forEach(({ promiseResolver }) => promiseResolver()) // note: we resolve the promises of each snapshot even though we only apply the last one
+        queuedSnapshots.splice(0, queuedSnapshots.length) // clear
+    }
+
+    setInterval(
+        onTimeToSendUpdates,
+        timeBatchingConfigReal.timeBetweenUpdatesMs
+    )
+
+    const returnValuePart: BoundFirstAll<typeof basicInterface> = {
+        crypto: basicInterface.crypto,
+
+        addUpdates: async (updates: ClientUpdate[]) => {
+            const promise = new Promise<void>((resolve) => {
+                queuedUpdates.push({
+                    update: updates,
+                    promiseResolver: resolve,
+                })
+            })
+            return promise
+        },
+
+        applySnapshot: async (
+            updates: ClientUpdate[],
+            lastUpdateRowToReplace: number
+        ) => {
+            const promise = new Promise<void>((resolve) => {
+                queuedSnapshots.push({
+                    updates,
+                    lastUpdateRowToReplace,
+                    promiseResolver: resolve,
+                })
+            })
+            return promise
+        },
+
+        // May want to time-batch these too?
+        subscribeToRemoteUpdates: bindFirst(
+            basicInterface.subscribeToRemoteUpdates,
+            docId
+        ),
+        getRemoteUpdateList: bindFirst(
+            basicInterface.getRemoteUpdateList,
+            docId
+        ),
+
+        // maybe even these?
+        connect: basicInterface.connect,
+        disconnect: basicInterface.disconnect,
+    }
+    return {
+        ...returnValuePart,
+        getTimeBatchingConfig: () => timeBatchingConfigReal,
+        setTimeBatchingConfig: (newConfig) =>
+            (timeBatchingConfigReal = newConfig),
     }
 }
