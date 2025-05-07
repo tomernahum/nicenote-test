@@ -28,6 +28,7 @@ https://groups.google.com/a/chromium.org/g/blink-dev/c/T2kriFdjXsg/m/ZeD_PoLXBwA
 server will know the public key, so it can block spam before it reaches client (will be configurable) - server already has DoS ability from blocking messages, so nothing lost
 all readers will also know the public key, so they can verify writes for themselves in case of malicious server
 
+writes will probably be done on top of already-encrypted data, though I will look into this more to make sure that is not a bad practice
 
 */
 const DEFAULT_ENCRYPTION_CONFIG_VALUES = {
@@ -67,17 +68,30 @@ export function createCryptoFactory(cryptoConfig: CryptoConfig) {
         getCryptoConfig: () => config,
         changeCryptoConfig,
     }
+
     async function clientMessagesToSealedMessage(
         clientMessages: ClientMessage[]
     ) {
         const encoded = encoding.encodeMultipleUpdatesAsOne(clientMessages)
-        // todo: client-to-client signing
+        const padded = padding.padData(encoded)
+        const encrypted = await encryption.encrypt(padded)
+        // Todo, signed
+        const versioned = versioning.addVersion(encrypted)
 
-        return new Uint8Array()
+        return versioned
     }
+
     async function sealedMessageToClientMessages(sealedMessage: SealedMessage) {
-        return []
+        const [deVersioned, version] =
+            versioning.stripOffVersionAndConfirmItIsValid(sealedMessage)
+        // TODO: verify verify message signature
+        const decrypted = await encryption.decrypt(deVersioned)
+        const unPadded = padding.unPadData(decrypted)
+        const decoded = encoding.decodeMultiUpdate(unPadded)
+
+        return decoded
     }
+
     function changeCryptoConfig(newConfig: CryptoConfig) {
         config = {
             ...DEFAULT_ENCRYPTION_CONFIG_VALUES,
