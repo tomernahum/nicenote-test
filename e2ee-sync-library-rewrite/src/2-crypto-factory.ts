@@ -6,7 +6,7 @@ type SealedMessage = SealedUpdate
 
 // todo: maybe narrow the types
 type AESEncryptionKey = CryptoKey
-type SigningKey = CryptoKey
+// type SigningKey = CryptoKey
 
 export type CryptoConfig = {
     mainKey: AESEncryptionKey
@@ -16,16 +16,18 @@ export type CryptoConfig = {
     paddingLengthCheckpoints?: number[]
 }
 /* 
-useClientServerWriteSignatures  
-- client signs updates before encrypting them, for the server to verify
-useClientClientWriteSignatures
-- client signs updates before encrypting them, for other clients to verify
-verifyWriteSignatures
-- client verifies signatures of writes from other clients before applying them - this should apply for read-only clients as well
+useWriteSignatures: client signs updates before encrypting them, for other clients + the server to verify
+verifyWriteSignatures: client verifies signatures of writes from other clients before applying them - this should apply for read-only clients as well
+
+old idea: separate useClientServerWriteSignatures, useClientClientWriteSignatures
 
 write signatures will likely be done with web crypto api's Ed25519 algo implementation, which should ship in chrome soon (has shipped in chrome beta 137) (has shipped in firefox+safari already):
 https://groups.google.com/a/chromium.org/g/blink-dev/c/T2kriFdjXsg/m/ZeD_PoLXBwAJ?pli=1  
 (concerns raised in that thread about it not being quantum resistant, (will switch algorithms once a better one is provided by web crypto). However this is just verifying integrity of updates, which won't remain relevant for very long (not past a snapshot/compaction), so the quantum resistance is not as important as something like the obscurity-providing encryption who's traffic could be captured and analyzed in the future. Plus for our app it is only protecting from non-writer readers, protection from non-readers is already covered (by aes-256-gcm encryption, which to my understanding is quantum resistant as far as anyone knows, as long as it is not undermined by a separate key exchange protocol). So our threat model currently does not  protect against someone who has gained read access, but not write access, and also has a powerful quantum computer before we can roll out a post-quantum algorithm and get more doc activity to invalidate the old writes
+
+server will know the public key, so it can block spam before it reaches client (will be configurable) - server already has DoS ability from blocking messages, so nothing lost
+all readers will also know the public key, so they can verify writes for themselves in case of malicious server
+
 
 */
 const DEFAULT_ENCRYPTION_CONFIG_VALUES = {
@@ -69,6 +71,8 @@ export function createCryptoFactory(cryptoConfig: CryptoConfig) {
         clientMessages: ClientMessage[]
     ) {
         const encoded = encoding.encodeMultipleUpdatesAsOne(clientMessages)
+        // todo: client-to-client signing
+
         return new Uint8Array()
     }
     async function sealedMessageToClientMessages(sealedMessage: SealedMessage) {
