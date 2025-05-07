@@ -1,5 +1,3 @@
-// type ServerReceivedMessage = { op: EncryptedMessage; rowId: number }
-
 import { ClientUpdate, SealedUpdate } from "./-types"
 import { tryCatch } from "./-utils"
 
@@ -7,11 +5,12 @@ type ClientMessage = ClientUpdate
 type SealedMessage = SealedUpdate
 
 // todo: maybe narrow the types
-type AESKey = CryptoKey
-// type HMACKey = CryptoKey //HMAC wip might end up being different signing algorithm
+type AESEncryptionKey = CryptoKey
+type SigningKey = CryptoKey
+
 export type CryptoConfig = {
-    mainKey: AESKey
-    validOldKeys: AESKey[]
+    mainKey: AESEncryptionKey
+    validOldKeys: AESEncryptionKey[]
 
     /** plaintext message length will be padded up to the closest of these values, in bytes. The highest value is the max supported length  of messages */
     paddingLengthCheckpoints?: number[]
@@ -29,24 +28,6 @@ https://groups.google.com/a/chromium.org/g/blink-dev/c/T2kriFdjXsg/m/ZeD_PoLXBwA
 (concerns raised in that thread about it not being quantum resistant, (will switch algorithms once a better one is provided by web crypto). However this is just verifying integrity of updates, which won't remain relevant for very long (not past a snapshot/compaction), so the quantum resistance is not as important as something like the obscurity-providing encryption who's traffic could be captured and analyzed in the future. Plus for our app it is only protecting from non-writer readers, protection from non-readers is already covered (by aes-256-gcm encryption, which to my understanding is quantum resistant as far as anyone knows, as long as it is not undermined by a separate key exchange protocol). So our threat model currently does not  protect against someone who has gained read access, but not write access, and also has a powerful quantum computer before we can roll out a post-quantum algorithm and get more doc activity to invalidate the old writes
 
 */
-// & (
-//     | { useWriteSignaturesForServer: false; serverSignatureSecretKey?: HMACKey }
-//     | {
-//           useWriteSignaturesForServer: true
-//           //   thisClientHasWritePermissionToServer: boolean // TODO
-//           serverSignatureSecretKey: HMACKey
-//       }
-// ) &
-//     (
-//         | {
-//               useWriteSignaturesForClients: false
-//               clientSignatureSecretKey?: HMACKey
-//           }
-//         | {
-//               useWriteSignaturesForClients: true
-//               clientSignatureSecretKey: HMACKey
-//           }
-//     )
 const DEFAULT_ENCRYPTION_CONFIG_VALUES = {
     paddingLengthCheckpoints: [256, 2048, 16_384, 65_536, 262144],
 }
@@ -63,21 +44,7 @@ type Config = CryptoConfig &
     typeof DEFAULT_ENCRYPTION_CONFIG_VALUES &
     typeof ADDITIONAL_CONFIG_VALUES
 
-export interface CryptoFactory {
-    /*This will still generate a padded message even from an empty array of updates*/
-    clientMessagesToSealedMessage: (
-        clientMessages: ClientMessage[]
-    ) => Promise<SealedMessage>
-    sealedMessageToClientMessages: (
-        sealedMessage: SealedMessage
-    ) => Promise<ClientMessage[]>
-
-    getCryptoConfig: () => CryptoConfig
-    changeCryptoConfig: (newConfig: CryptoConfig) => void
-    // may be able to just return cryptoConfig instead, not 100% - ok yes but only since it's an object instead of a literal. I'll keep this to be explicit though
-}
-
-export function createCryptoFactory(cryptoConfig: CryptoConfig): CryptoFactory {
+export function createCryptoFactory(cryptoConfig: CryptoConfig) {
     let config: Config = {
         ...DEFAULT_ENCRYPTION_CONFIG_VALUES,
         ...ADDITIONAL_CONFIG_VALUES,
@@ -113,15 +80,14 @@ export function createCryptoFactory(cryptoConfig: CryptoConfig): CryptoFactory {
             ...ADDITIONAL_CONFIG_VALUES,
             ...newConfig,
         }
-        // TODO: make sure new config is used in all handlers. some of them may cache the values in variables
+        // TODO: test thatnew config is used in all handlers.
+        // Note that if a handler caches config values in variables, it would need to be reinitialized to use the new config
     } // might refactor how this is managed. Note that cryptoConfig needs to change periodically to rotate keys to provide PCS
 }
 export async function getInsecureCryptoConfigForTesting(): Promise<CryptoConfig> {
     return {
         mainKey: await getNonSecretHardCodedKeyForTestingSymmetricEncryption(),
         validOldKeys: [],
-        // useWriteSignaturesForServer: false,
-        // useWriteSignaturesForClients: false,
     }
 }
 export async function generateSymmetricEncryptionKey(
@@ -346,13 +312,16 @@ function createEncryptionLogic(config: Config) {
 // TODO: signing logic
 
 function createVersionLogic(config: Config) {
-    const mainVersionBytes = new TextEncoder().encode(config.schemaVersion)
-    const mainVersionLength = mainVersionBytes.length
+    // these are kept as functions so that the config can be changed at runtime. hopefully the js engine optimizes if they are not changed lol. if not and we see a performance issue we can cache them ourselves or actually reinitialize this function when config changes
+    const mainVersionBytes = (conf: Config) =>
+        new TextEncoder().encode(conf.schemaVersion)
+    const mainVersionLength = (conf: Config) => mainVersionBytes(conf).length
 
     function addVersion(message: Uint8Array) {
-        const out = new Uint8Array(message.length + mainVersionLength)
-        out.set(mainVersionBytes)
-        out.set(message, mainVersionLength)
+        const versionLen = mainVersionLength(config)
+        const out = new Uint8Array(message.length + versionLen)
+        out.set(mainVersionBytes(config))
+        out.set(message, versionLen)
         return out
     }
     function readVersion(message: Uint8Array, expectedByteLength: number) {
@@ -364,13 +333,13 @@ function createVersionLogic(config: Config) {
         return version
     }
     function stripOffVersionAndConfirmItIsValid(message: Uint8Array) {
-        const version = readVersion(message, mainVersionLength)
+        const version = readVersion(message, mainVersionLength(config))
         if (
             version !== config.schemaVersion &&
             // @ts-expect-error // this shouldn't be an error imo
             !config.backwardsCompatibleSchemaVersions.includes(version)
         ) {
-            // TODO see if any backwards compatible version matches, in case they are a different length
+            // TODO: support backwards compatible versions with different lengths
             throw new Error("Invalid version")
         }
         return [message.subarray(version.length), version] as const
