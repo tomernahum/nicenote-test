@@ -21,3 +21,32 @@ export type BoundFirstAll<T> = {
         ? (...args: Rest) => R
         : T[K]
 }
+
+type Success<T> = {
+    data: T
+    error: null
+}
+type Failure<E> = {
+    data: null
+    error: E
+}
+type Result<T, E = Error> = Success<T> | Failure<E>
+export async function tryCatch<T, E = Error>(
+    promise: Promise<T>
+): Promise<Result<T, E>> {
+    try {
+        const data = await promise
+        return { data, error: null }
+    } catch (error) {
+        return { data: null, error: error as E }
+    }
+}
+
+// export async function tryCatch2<T>(promise: Promise<T>) {
+//     try {
+//         const data = await promise
+//         return { data, error: null } as const
+//     } catch (error) {
+//         return { data: null, error: error as Error } as const
+//     }
+// }
