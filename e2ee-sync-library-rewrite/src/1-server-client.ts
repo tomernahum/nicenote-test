@@ -31,9 +31,9 @@ export function getServerInterface(
     )
     return {
         ...server,
-        getCryptoConfig: () => server.crypto.getCryptoConfig(),
-        setCryptoConfig: (newConfig: CryptoConfig) =>
-            server.crypto.changeCryptoConfig(newConfig),
+        // time batching config is returned by the above line
+        getCryptoConfig: server.crypto.getCryptoConfig,
+        setCryptoConfig: server.crypto.changeCryptoConfig,
     }
 }
 function getServerInterfaceWithTimeBatching(
@@ -169,7 +169,7 @@ function getBasicEncryptedServerInterface(
     crypto: CryptoFactoryI
 ) {
     // very similar to BaseServerConnectionInterfaceShape, but some variation
-    return {
+    const out = {
         crypto,
 
         connect: () => server.connect(),
@@ -224,4 +224,19 @@ function getBasicEncryptedServerInterface(
             server.applySnapshot(docId, sealedUpdate, lastUpdateRowToReplace)
         },
     }
+
+    // type checking helpers, so that if I change the interface of BaseServerConnectionInterfaceShape, I get a type error here, to remind me to consider changing this as well. Maybe unnecessary
+    const outMethodsModified = {} as VoidMethods<typeof out> & {
+        addUpdate: () => void
+    }
+    outMethodsModified satisfies VoidMethods<BaseServerConnectionInterfaceShape>
+    type MethodNames<T> = {
+        [K in keyof T]: T[K] extends (...args: any[]) => any ? K : never
+    }[keyof T]
+
+    type VoidMethods<T> = {
+        [K in MethodNames<T>]: () => void
+    }
+
+    return out
 }

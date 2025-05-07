@@ -7,14 +7,12 @@ import {
 } from "y-protocols/awareness.js"
 
 import { getInsecureCryptoConfigForTesting } from "./2-crypto-factory"
-import { type Update } from "../../e2ee-sync-library/src/0-data-model"
 import { getServerInterface } from "./1-server-client"
+import { ClientUpdate } from "./-types"
 
+// maybe yjs and server-to-yjs-provider update could be abstracted out of this, then this code reused for all crdts which we will wrap like we did with yjs
 async function test(yDoc: Y.Doc, mergeInitialState: boolean) {
-    const localYProvider = createBaseYjsProvider(yDoc, () => {
-        return
-    })
-
+    // connect to server
     const server = getServerInterface(
         "my-docId",
         await getInsecureCryptoConfigForTesting(),
@@ -23,18 +21,39 @@ async function test(yDoc: Y.Doc, mergeInitialState: boolean) {
             sendUpdatesToServerWhenNoUserUpdate: true,
         }
     )
-
     await server.connect()
 
-    const remoteDocUpdatesUponConnection = await server.getRemoteUpdateList()
-    const decodedRemoteDocUpdatesUponConnection =
-        remoteDocUpdatesUponConnection.map((libUpdate) =>
-            libUpdateToYjsProviderUpdateCodec().decode(libUpdate.update)
-        )
+    // connect local yDoc // put after server is connected since onLocalUpdate sends to the server...
+    const localYProvider = createBaseYjsProvider(yDoc, onLocalUpdate)
 
-    localYProvider.applyRemoteUpdates(decodedRemoteDocUpdatesUponConnection)
+    // get the initial/current remote yDoc state (as updates), and apply it to the local yDoc
+    const remoteDocUpdatesUponConnection = await server.getRemoteUpdateList()
+    const yDocUpdates = remoteDocUpdatesUponConnection.map((libUpdate) =>
+        yjsPUpdateEncoder().decode(libUpdate.update)
+    )
+    localYProvider.applyRemoteUpdates(yDocUpdates)
+
+    // listen for updates from the server and apply them to the local yDoc
+    server.subscribeToRemoteUpdates((updates) => {
+        const decodedUpdates = updates.map((update) =>
+            yjsPUpdateEncoder().decode(update)
+        )
+        localYProvider.applyRemoteUpdates(decodedUpdates)
+    })
+
+    // listen for local updates and apply them to the server
+    // actually passed in when we connected to the local doc
+    function onLocalUpdate(update: {
+        type: "doc" | "awareness"
+        operation: Uint8Array
+    }) {
+        const encodedUpdate = yjsPUpdateEncoder().encode(update)
+        server.addUpdates([encodedUpdate])
+    }
+
+    // send initial local yDoc state to server
     if (mergeInitialState) {
-        const remoteDocOnlyUpdates = decodedRemoteDocUpdatesUponConnection
+        const remoteDocOnlyUpdates = yDocUpdates
             .filter((update) => update.type === "doc")
             .map((update) => update.operation)
         const differingInitialUpdates =
@@ -43,30 +62,38 @@ async function test(yDoc: Y.Doc, mergeInitialState: boolean) {
             )
         server.addUpdates(
             differingInitialUpdates.map((update) => {
-                const encodedUpdate =
-                    libUpdateToYjsProviderUpdateCodec().encode({
-                        type: "doc",
-                        operation: update,
-                    })
+                const encodedUpdate = yjsPUpdateEncoder().encode({
+                    type: "doc",
+                    operation: update,
+                })
                 return encodedUpdate
             })
         )
     }
+
+    // perform periodic snapshots
+    // TODO
 }
 
 // TODO //WIP // fake data
-function libUpdateToYjsProviderUpdateCodec() {
+function yjsPUpdateEncoder() {
     return {
-        encode: (libUpdate: {
+        encode: (providerUpdate: {
             type: "doc" | "awareness"
             operation: Uint8Array
-        }) => {
-            return libUpdate.operation
+        }): ClientUpdate => {
+            if (providerUpdate.type === "doc") {
+                return providerUpdate.operation
+            } else if (providerUpdate.type === "awareness") {
+                return new Uint8Array()
+            } else {
+                throw new Error("unknown provider update type")
+            }
         },
-        decode: (libUpdate: Uint8Array) => {
+        decode: (update: ClientUpdate) => {
             return {
                 type: "doc",
-                operation: libUpdate,
+                operation: update,
             } as const
         },
     }
@@ -82,9 +109,10 @@ function libUpdateToYjsProviderUpdateCodec() {
  */
 function createBaseYjsProvider(
     yDoc: Y.Doc,
-    onUpdates: (
-        updates: { type: "doc" | "awareness"; operation: Uint8Array }[]
-    ) => void,
+    onUpdate: (updates: {
+        type: "doc" | "awareness"
+        operation: Uint8Array
+    }) => void,
     removeClientAwarenessDataOnWindowClose = true
 ) {
     const awareness = new Awareness(yDoc)
@@ -100,13 +128,13 @@ function createBaseYjsProvider(
         }
         // now this update was produced either locally or by another provider.
 
-        onUpdates([{ type: "doc", operation: update }])
+        onUpdate({ type: "doc", operation: update })
     })
     // subscribe to local awareness updates
     awareness.on("update", ({ added, updated, removed }) => {
         const changedClients = added.concat(updated).concat(removed)
         const encodedUpdate = encodeAwarenessUpdate(awareness, changedClients)
-        onUpdates([{ type: "awareness", operation: encodedUpdate }])
+        onUpdate({ type: "awareness", operation: encodedUpdate })
     })
 
     // remove ourselves from the awareness when we close the window (will be auto-detected after a while anyways)

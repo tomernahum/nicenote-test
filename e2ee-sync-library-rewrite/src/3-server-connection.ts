@@ -125,5 +125,7 @@ export function getBaseServerConnectionInterface() {
                 lastUpdateRowToReplace
             )
         },
+
+        // TODO: what about onConnectionLost??
     }
 }
