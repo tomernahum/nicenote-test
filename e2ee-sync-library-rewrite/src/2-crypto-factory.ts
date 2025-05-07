@@ -47,6 +47,8 @@ type Config = CryptoConfig &
     typeof DEFAULT_ENCRYPTION_CONFIG_VALUES &
     typeof ADDITIONAL_CONFIG_VALUES
 
+export type CryptoFactoryI = ReturnType<typeof createCryptoFactory>
+
 export function createCryptoFactory(cryptoConfig: CryptoConfig) {
     let config: Config = {
         ...DEFAULT_ENCRYPTION_CONFIG_VALUES,
@@ -54,8 +56,8 @@ export function createCryptoFactory(cryptoConfig: CryptoConfig) {
         ...cryptoConfig,
     }
 
-    // these are all pure (other than config), I just organized them like this
-    // config should update in them when it updates since its an object therefore passed by reference
+    // these are all pure (other than config), I just organized them like this, to have them all in one file
+    // config should update in them when it updates since its an object therefore passed by reference. I need to make sure I don't copy anything from config upon creation and use that
     const encoding = createEncodingLogic()
     const padding = createPaddingLogic(config)
     const encryption = createEncryptionLogic(config)

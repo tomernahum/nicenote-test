@@ -9,79 +9,37 @@ import { bindFirst, BoundFirstAll } from "./-utils"
 import {
     createCryptoFactory,
     CryptoConfig,
-    CryptoFactory,
+    CryptoFactoryI,
 } from "./2-crypto-factory"
 import {
     BaseServerConnectionInterfaceShape,
     getBaseServerConnectionInterface,
 } from "./3-server-connection"
 
-function getBasicEncryptedServerInterface(
-    server: BaseServerConnectionInterfaceShape,
-    crypto: CryptoFactory
+export function getServerInterface(
+    docId: DocId,
+    cryptoConfig: CryptoConfig,
+    timeBatchingConfig: Parameters<typeof getServerInterfaceWithTimeBatching>[3]
 ) {
-    // very similar to BaseServerConnectionInterfaceShape, but some variation
+    const serverConnectionInterface = getBaseServerConnectionInterface()
+    const cryptoFactory = createCryptoFactory(cryptoConfig)
+    const server = getServerInterfaceWithTimeBatching(
+        docId,
+        serverConnectionInterface,
+        cryptoFactory,
+        timeBatchingConfig
+    )
     return {
-        crypto,
-
-        connect: () => server.connect(),
-        disconnect: () => server.disconnect(),
-
-        addUpdates: async (docId: DocId, updates: ClientUpdate[]) => {
-            const sealedUpdate = await crypto.clientMessagesToSealedMessage(
-                updates
-            )
-            return server.addUpdate(docId, sealedUpdate)
-        },
-        subscribeToRemoteUpdates: (
-            docId: DocId,
-            callback: (newUpdates: ClientUpdate[], rowId: number) => void
-        ) =>
-            server.subscribeToRemoteUpdates(
-                docId,
-                async (sealedMessage, rowId) => {
-                    const decryptedUpdates =
-                        await crypto.sealedMessageToClientMessages(
-                            sealedMessage
-                        )
-                    callback(decryptedUpdates, rowId)
-                }
-            ),
-        getRemoteUpdateList: async (docId: DocId) => {
-            const sealedUpdates = await server.getRemoteUpdateList(docId)
-            const decryptedUpdatesFinal = await Promise.all(
-                sealedUpdates.map(async (sealedUpdate) => {
-                    const decryptedUpdates =
-                        await crypto.sealedMessageToClientMessages(
-                            sealedUpdate.sealedMessage
-                        )
-                    return decryptedUpdates.map((update) => ({
-                        update,
-                        rowId: sealedUpdate.rowId,
-                    }))
-                })
-            )
-            return decryptedUpdatesFinal.flat()
-        },
-
-        /** @param updates recommended to be one update per bucket */
-        applySnapshot: async (
-            docId: DocId,
-            updates: ClientUpdate[],
-            lastUpdateRowToReplace: number // may change. see 3-server-connection.ts
-        ) => {
-            const sealedUpdate = await crypto.clientMessagesToSealedMessage(
-                updates
-            )
-            server.applySnapshot(docId, sealedUpdate, lastUpdateRowToReplace)
-        },
+        ...server,
+        getCryptoConfig: () => server.crypto.getCryptoConfig(),
+        setCryptoConfig: (newConfig: CryptoConfig) =>
+            server.crypto.changeCryptoConfig(newConfig),
     }
 }
-
 function getServerInterfaceWithTimeBatching(
     docId: DocId,
     server: BaseServerConnectionInterfaceShape,
-    crypto: CryptoFactory, // takes cryptoConfig. might refactor how it is passed.
+    crypto: CryptoFactoryI, // takes cryptoConfig. might refactor how it is passed.
     timeBatchingConfig: {
         timeBetweenUpdatesMs: number
         sendUpdatesToServerWhenNoUserUpdate: boolean // if true, will send an update to the server even if there are no new updates from the user, this is done to obfuscate to the server when/how often the user is making updates (eg how much they are typing)
@@ -206,23 +164,64 @@ function getServerInterfaceWithTimeBatching(
     }
 }
 
-export function getServerInterface(
-    docId: DocId,
-    cryptoConfig: CryptoConfig,
-    timeBatchingConfig: Parameters<typeof getServerInterfaceWithTimeBatching>[3]
+function getBasicEncryptedServerInterface(
+    server: BaseServerConnectionInterfaceShape,
+    crypto: CryptoFactoryI
 ) {
-    const serverConnectionInterface = getBaseServerConnectionInterface()
-    const cryptoFactory = createCryptoFactory(cryptoConfig)
-    const server = getServerInterfaceWithTimeBatching(
-        docId,
-        serverConnectionInterface,
-        cryptoFactory,
-        timeBatchingConfig
-    )
+    // very similar to BaseServerConnectionInterfaceShape, but some variation
     return {
-        ...server,
-        getCryptoConfig: () => server.crypto.getCryptoConfig(),
-        setCryptoConfig: (newConfig: CryptoConfig) =>
-            server.crypto.changeCryptoConfig(newConfig),
+        crypto,
+
+        connect: () => server.connect(),
+        disconnect: () => server.disconnect(),
+
+        addUpdates: async (docId: DocId, updates: ClientUpdate[]) => {
+            const sealedUpdate = await crypto.clientMessagesToSealedMessage(
+                updates
+            )
+            return server.addUpdate(docId, sealedUpdate)
+        },
+        subscribeToRemoteUpdates: (
+            docId: DocId,
+            callback: (newUpdates: ClientUpdate[], rowId: number) => void
+        ) =>
+            server.subscribeToRemoteUpdates(
+                docId,
+                async (sealedMessage, rowId) => {
+                    const decryptedUpdates =
+                        await crypto.sealedMessageToClientMessages(
+                            sealedMessage
+                        )
+                    callback(decryptedUpdates, rowId)
+                }
+            ),
+        getRemoteUpdateList: async (docId: DocId) => {
+            const sealedUpdates = await server.getRemoteUpdateList(docId)
+            const decryptedUpdatesFinal = await Promise.all(
+                sealedUpdates.map(async (sealedUpdate) => {
+                    const decryptedUpdates =
+                        await crypto.sealedMessageToClientMessages(
+                            sealedUpdate.sealedMessage
+                        )
+                    return decryptedUpdates.map((update) => ({
+                        update,
+                        rowId: sealedUpdate.rowId,
+                    }))
+                })
+            )
+            return decryptedUpdatesFinal.flat()
+        },
+
+        /** @param updates recommended to be one update per bucket */
+        applySnapshot: async (
+            docId: DocId,
+            updates: ClientUpdate[],
+            lastUpdateRowToReplace: number // may change. see 3-server-connection.ts
+        ) => {
+            const sealedUpdate = await crypto.clientMessagesToSealedMessage(
+                updates
+            )
+            server.applySnapshot(docId, sealedUpdate, lastUpdateRowToReplace)
+        },
     }
 }
