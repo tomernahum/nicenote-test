@@ -71,8 +71,38 @@ async function test(yDoc: Y.Doc, mergeInitialState: boolean) {
         )
     }
 
-    // perform periodic snapshots
-    // TODO
+    // TODO: perform periodic snapshots
+    // ...
+
+    // TODO: notice when we go into offline mode & notify caller. maybe add option to autoreconnect
+    // in our ultimate app, upon disconnection we will switch to offline mode, stop sending updates to the server, and then upon reconnection trigger custom logic of what to merge in to the server (for now / by default sending missing yjs updates and letting yjs handle the merging is fine, but in final app I want either a custom merging algorithm that is my specific-content-aware, or actually having the user in the loop. as in show them current & offline version and let them copy paste manually or run an automerge algorithm)
+
+    function onDisconnectBrainstorm() {}
+    const configBrainstorm = {}
+    // callback
+    function onReconnectBrainstorm(onlineDocState) {}
+    function onReconnectOneLayerUpBrainstorm(
+        onlineDocState,
+        localDocState
+    ): { newDocState: any } {
+        return { newDocState: null }
+    }
+
+    const configBrainstorm2 = {
+        mergeInitialState: true,
+        //mergeStateOnReconnect: true, // turn off for our app, then onReconnect do merge at higher up level
+
+        onReconnectHandling:
+            "mergeLocalStateIntoOnline" | "replaceLocalStateWithOnline", //| "addOnlineStateToLocalButDontAddLocalToOnline"
+
+        callbackOnDisconnect: (
+            docStateOnDisconnectIsAlreadyCapturedInTheYDoc
+        ) => {},
+        callbackOnReconnect: () => {},
+
+        // either: use the same yDoc for online and offline, do onRecconect=mergeLocalStateIntoOnline
+        // or: use a different yDoc for online and offline, do onReconnect=replaceLocalStateWithOnline, then manually merge the two docs however you want
+    }
 }
 
 // TODO //WIP // fake data
