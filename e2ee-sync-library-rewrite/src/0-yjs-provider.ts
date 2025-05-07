@@ -92,8 +92,9 @@ async function test(yDoc: Y.Doc, mergeInitialState: boolean) {
         mergeInitialState: true,
         //mergeStateOnReconnect: true, // turn off for our app, then onReconnect do merge at higher up level
 
-        onReconnectHandling:
-            "mergeLocalStateIntoOnline" | "replaceLocalStateWithOnline", //| "addOnlineStateToLocalButDontAddLocalToOnline"
+        onReconnectHandling: "" as
+            | "mergeLocalStateIntoOnline"
+            | "replaceLocalStateWithOnline", //| "addOnlineStateToLocalButDontAddLocalToOnline"
 
         callbackOnDisconnect: (
             docStateOnDisconnectIsAlreadyCapturedInTheYDoc
@@ -103,6 +104,8 @@ async function test(yDoc: Y.Doc, mergeInitialState: boolean) {
         // either: use the same yDoc for online and offline, do onRecconect=mergeLocalStateIntoOnline
         // or: use a different yDoc for online and offline, do onReconnect=replaceLocalStateWithOnline, then manually merge the two docs however you want
     }
+
+    // right now im not sure whether or not socketio will automatically rehydrate messages that we were meant to get while offline. or automatically send messages we were trying to send (pretty sure yes for sending). should turn off the latter.
 }
 
 // TODO //WIP // fake data
