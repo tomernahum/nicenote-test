@@ -7,31 +7,32 @@ type SealedMessage = SealedUpdate
 
 // todo: maybe narrow the types
 type AESKey = CryptoKey
-type HMACKey = CryptoKey //HMAC wip might end up being different signing algorithm
+// type HMACKey = CryptoKey //HMAC wip might end up being different signing algorithm
 export type CryptoConfig = {
     mainKey: AESKey
     validOldKeys: AESKey[]
 
     /** plaintext message length will be padded up to the closest of these values, in bytes. The highest value is the max supported length  of messages */
     paddingLengthCheckpoints?: number[]
-} & (
-    | { useWriteSignaturesForServer: false; serverSignatureSecretKey?: HMACKey }
-    | {
-          useWriteSignaturesForServer: true
-          //   thisClientHasWritePermissionToServer: boolean // TODO
-          serverSignatureSecretKey: HMACKey
-      }
-) &
-    (
-        | {
-              useWriteSignaturesForClients: false
-              clientSignatureSecretKey?: HMACKey
-          }
-        | {
-              useWriteSignaturesForClients: true
-              clientSignatureSecretKey: HMACKey
-          }
-    )
+}
+// & (
+//     | { useWriteSignaturesForServer: false; serverSignatureSecretKey?: HMACKey }
+//     | {
+//           useWriteSignaturesForServer: true
+//           //   thisClientHasWritePermissionToServer: boolean // TODO
+//           serverSignatureSecretKey: HMACKey
+//       }
+// ) &
+//     (
+//         | {
+//               useWriteSignaturesForClients: false
+//               clientSignatureSecretKey?: HMACKey
+//           }
+//         | {
+//               useWriteSignaturesForClients: true
+//               clientSignatureSecretKey: HMACKey
+//           }
+//     )
 const DEFAULT_ENCRYPTION_CONFIG_VALUES = {
     paddingLengthCheckpoints: [256, 2048, 16_384, 65_536, 262144],
 }
@@ -104,8 +105,8 @@ export async function getInsecureCryptoConfigForTesting(): Promise<CryptoConfig>
     return {
         mainKey: await getNonSecretHardCodedKeyForTestingSymmetricEncryption(),
         validOldKeys: [],
-        useWriteSignaturesForServer: false,
-        useWriteSignaturesForClients: false,
+        // useWriteSignaturesForServer: false,
+        // useWriteSignaturesForClients: false,
     }
 }
 export async function generateSymmetricEncryptionKey(
