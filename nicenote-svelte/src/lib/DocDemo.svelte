@@ -7,6 +7,8 @@
 	import * as Y from 'yjs';
 	import { getRandomAnimal, getRandomColor } from '../../../e2ee-sync-library/src';
 	import { QuillBinding } from 'y-quill';
+	import 'quill/dist/quill.bubble.css';
+	import 'quill/dist/quill.snow.css';
 
 	function initializeQuillEditor(element: HTMLElement | string) {
 		const QUILL_TOOLBAR = [
@@ -124,3 +126,10 @@
 </script>
 
 <div bind:this={noteElem} id="note" style="overflow: visible;"></div>
+
+<style>
+	:global(.ql-bubble .ql-tooltip) {
+		z-index: 9999;
+		pointer-events: auto;
+	}
+</style>

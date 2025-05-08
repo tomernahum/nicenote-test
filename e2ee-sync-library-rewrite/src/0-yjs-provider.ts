@@ -33,7 +33,9 @@ export async function createSyncedYDocProviderDemo(
             sendUpdatesToServerWhenNoUserUpdate: true,
         }
     )
+    console.debug("created server interface")
     await server.connect()
+    console.debug("connected to server")
 
     // connect local yDoc // put after server is connected since onLocalUpdate sends to the server...
     const localYProvider = createBaseYjsProvider(yDoc, onLocalUpdate)
@@ -50,10 +52,13 @@ export async function createSyncedYDocProviderDemo(
     //     // Todo merging
     // }
     const remoteDocUpdatesUponConnection = await server.getRemoteUpdateList()
+    console.debug("got remote doc updates upon connection")
     const yDocUpdates = remoteDocUpdatesUponConnection.map((libUpdate) =>
         yjsPUpdateEncoder().decode(libUpdate.update)
     )
+    console.debug("decoded remote doc updates upon connection")
     localYProvider.applyRemoteUpdates(yDocUpdates)
+    console.debug("applied remote doc updates upon connection")
 
     // listen for updates from the server and apply them to the local yDoc
     server.subscribeToRemoteUpdates((updates) => {
@@ -138,26 +143,37 @@ export async function createSyncedYDocProviderDemo(
     // right now im not sure whether or not socketio will automatically rehydrate messages that we were meant to get while offline. or automatically send messages we were trying to send (pretty sure yes for sending). should turn off the latter.
 }
 
-// TODO //WIP // fake data
+type LibraryUpdate = ClientUpdate
+type YProviderUpdate = {
+    type: "doc" | "awareness"
+    operation: Uint8Array
+}
 function yjsPUpdateEncoder() {
     return {
-        encode: (providerUpdate: {
-            type: "doc" | "awareness"
-            operation: Uint8Array
-        }): ClientUpdate => {
-            if (providerUpdate.type === "doc") {
-                return providerUpdate.operation
-            } else if (providerUpdate.type === "awareness") {
-                return new Uint8Array()
-            } else {
-                throw new Error("unknown provider update type")
-            }
+        encode: (providerUpdate: YProviderUpdate): LibraryUpdate => {
+            // A simple encoding scheme: [type byte, ...operation bytes]
+            // 0 for 'doc', 1 for 'awareness'
+            const typeByte = providerUpdate.type === "doc" ? 0 : 1
+            const encoded = new Uint8Array(1 + providerUpdate.operation.length)
+            encoded[0] = typeByte
+            encoded.set(providerUpdate.operation, 1)
+            return encoded
         },
-        decode: (update: ClientUpdate) => {
+        decode: (update: LibraryUpdate): YProviderUpdate => {
+            if (update.length === 0) {
+                console.warn("Tried to decode an empty library update")
+                throw new Error("Cannot decode empty update")
+            }
+
+            const typeByte = update[0]
+            const type: "doc" | "awareness" =
+                typeByte === 0 ? "doc" : "awareness"
+            const operation = update.slice(1)
+
             return {
-                type: "doc",
-                operation: update,
-            } as const
+                type,
+                operation,
+            }
         },
     }
 }
@@ -212,7 +228,7 @@ function createBaseYjsProvider(
             window.addEventListener("beforeunload", beforeWindowUnload)
         } catch (e) {
             console.warn(
-                "failed to add beforeunload listener to remove awareness state",
+                "failed to add window.beforeunload listener to remove awareness state",
                 e
             )
         }
