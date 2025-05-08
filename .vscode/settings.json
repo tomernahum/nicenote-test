@@ -1,5 +1,11 @@
 {
-    "cSpell.words": ["ciphertext", "prosemirror", "Toxiproxy", "ydoc"],
+    "cSpell.words": [
+        "ciphertext",
+        "CRDT",
+        "prosemirror",
+        "Toxiproxy",
+        "ydoc"
+    ],
     "liveServer.settings.port": 5501,
     "material-icon-theme.folders.associations": {
         // https://raw.githubusercontent.com/material-extensions/vscode-material-icon-theme/main/images/folderIcons.png

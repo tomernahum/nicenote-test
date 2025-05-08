@@ -148,7 +148,7 @@ type YProviderUpdate = {
     type: "doc" | "awareness"
     operation: Uint8Array
 }
-function yjsPUpdateEncoder() {
+export function yjsPUpdateEncoder() {
     return {
         encode: (providerUpdate: YProviderUpdate): LibraryUpdate => {
             // A simple encoding scheme: [type byte, ...operation bytes]
@@ -186,12 +186,9 @@ function yjsPUpdateEncoder() {
  * Also sets up and returns an awareness instance, as is the job of most yjs providers
  *
  */
-function createBaseYjsProvider(
+export function createBaseYjsProvider(
     yDoc: Y.Doc,
-    onUpdate: (updates: {
-        type: "doc" | "awareness"
-        operation: Uint8Array
-    }) => void,
+    onUpdate: (update: YProviderUpdate) => void = () => {},
     removeClientAwarenessDataOnWindowClose = true
 ) {
     const awareness = new Awareness(yDoc)
@@ -286,5 +283,12 @@ function createBaseYjsProvider(
         },
 
         disconnect: disconnectFromYDoc,
+
+        /** only supports one subscriber at a time (that is all that is needed currently) */
+        subscribeToRemoteUpdates: (
+            callback: (update: YProviderUpdate) => void
+        ) => {
+            onUpdate = callback
+        },
     }
 }
