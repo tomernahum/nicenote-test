@@ -29,8 +29,12 @@ const serverConnections: string[] = []
 
 export function getBaseServerConnectionInterface() {
     const SERVER_URL = "http://localhost:3000"
-    const socket: Socket<ServerToClientEvents, ClientToServerEvents> =
-        io(SERVER_URL)
+    const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
+        SERVER_URL,
+        {
+            reconnection: undefined,
+        }
+    )
 
     const myId = crypto.randomUUID()
     serverConnections.push(myId)
@@ -106,7 +110,7 @@ export function getBaseServerConnectionInterface() {
                     resolve(
                         data.map(({ id, operation }) => ({
                             rowId: id,
-                            sealedMessage: operation,
+                            sealedMessage: new Uint8Array(operation),
                         }))
                     )
                 })

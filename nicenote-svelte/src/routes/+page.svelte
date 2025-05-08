@@ -1,8 +1,9 @@
 <script>
-	import Note from '$lib/Note.svelte';
+	import DocDemo from '$lib/DocDemo.svelte';
+	// import Note from '$lib/Note.svelte';
 </script>
 
-<ul>
+<!-- <ul>
 	<li>
 		<Note remoteDocId="MyDocSvelteNew" />
 	</li>
@@ -15,7 +16,8 @@
 	<li>
 		<Note remoteDocId="MyDoc2" />
 	</li>
-</ul>
+</ul> -->
+<DocDemo />
 
 <br />
 

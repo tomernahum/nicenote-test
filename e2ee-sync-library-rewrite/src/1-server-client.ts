@@ -49,6 +49,7 @@ function getServerInterfaceWithTimeBatching(
         // maxTimeBetweenUpdatesMs: number | "unlimited",
     }
 ) {
+    // TODO: IDEA: option to replay events with same delay that they came in (encode that data into the plaintext)
     let timeBatchingConfigReal = timeBatchingConfig
     let connected = false
 

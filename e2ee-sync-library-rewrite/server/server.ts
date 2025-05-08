@@ -21,9 +21,10 @@ const io = new Server<
     ServerToClientEvents,
     InterServerEvents,
     SocketData
->({
+>(3000, {
     cors: {
         origin: "*",
+        methods: ["GET", "POST"],
     },
 })
 

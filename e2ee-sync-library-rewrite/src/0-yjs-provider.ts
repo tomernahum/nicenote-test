@@ -11,10 +11,22 @@ import { getServerInterface } from "./1-server-client"
 import { ClientUpdate } from "./-types"
 
 // maybe yjs and server-to-yjs-provider update could be abstracted out of this, then this code reused for all crdts which we will wrap like we did with yjs
-async function test(yDoc: Y.Doc, mergeInitialState: boolean) {
+export async function createSyncedYDocProviderDemo(
+    yDoc: Y.Doc,
+    params: {
+        remoteDocId: string
+        mergeInitialState?: boolean
+        onReconnect?:
+            | "mergeLocalStateIntoOnline"
+            | "replaceLocalStateWithOnline"
+        // | "cancelReconnect"
+        // onDisconnect
+        // onInitialConnectionError
+    }
+) {
     // connect to server
     const server = getServerInterface(
-        "my-docId",
+        params.remoteDocId,
         await getInsecureCryptoConfigForTesting(),
         {
             timeBetweenUpdatesMs: 100,
@@ -27,6 +39,16 @@ async function test(yDoc: Y.Doc, mergeInitialState: boolean) {
     const localYProvider = createBaseYjsProvider(yDoc, onLocalUpdate)
 
     // get the initial/current remote yDoc state (as updates), and apply it to the local yDoc
+    // async function hydrateDocUponConnection() {
+    //     const remoteDocUpdatesUponConnection =
+    //         await server.getRemoteUpdateList()
+    //     const yDocUpdates = remoteDocUpdatesUponConnection.map((libUpdate) =>
+    //         yjsPUpdateEncoder().decode(libUpdate.update)
+    //     )
+    //     localYProvider.applyRemoteUpdates(yDocUpdates)
+
+    //     // Todo merging
+    // }
     const remoteDocUpdatesUponConnection = await server.getRemoteUpdateList()
     const yDocUpdates = remoteDocUpdatesUponConnection.map((libUpdate) =>
         yjsPUpdateEncoder().decode(libUpdate.update)
@@ -52,7 +74,7 @@ async function test(yDoc: Y.Doc, mergeInitialState: boolean) {
     }
 
     // send initial local yDoc state to server
-    if (mergeInitialState) {
+    if (params.mergeInitialState ?? true) {
         const remoteDocOnlyUpdates = yDocUpdates
             .filter((update) => update.type === "doc")
             .map((update) => update.operation)
@@ -71,39 +93,47 @@ async function test(yDoc: Y.Doc, mergeInitialState: boolean) {
         )
     }
 
+    return {
+        awareness: localYProvider.awareness,
+        disconnect: () => {
+            server.disconnect()
+            localYProvider.disconnect()
+        },
+    }
+
     // TODO: perform periodic snapshots
     // ...
 
     // TODO: notice when we go into offline mode & notify caller. maybe add option to autoreconnect
     // in our ultimate app, upon disconnection we will switch to offline mode, stop sending updates to the server, and then upon reconnection trigger custom logic of what to merge in to the server (for now / by default sending missing yjs updates and letting yjs handle the merging is fine, but in final app I want either a custom merging algorithm that is my specific-content-aware, or actually having the user in the loop. as in show them current & offline version and let them copy paste manually or run an automerge algorithm)
 
-    function onDisconnectBrainstorm() {}
-    const configBrainstorm = {}
-    // callback
-    function onReconnectBrainstorm(onlineDocState) {}
-    function onReconnectOneLayerUpBrainstorm(
-        onlineDocState,
-        localDocState
-    ): { newDocState: any } {
-        return { newDocState: null }
-    }
+    // function onDisconnectBrainstorm() {}
+    // const configBrainstorm = {}
+    // // callback
+    // function onReconnectBrainstorm(onlineDocState) {}
+    // function onReconnectOneLayerUpBrainstorm(
+    //     onlineDocState,
+    //     localDocState
+    // ): { newDocState: any } {
+    //     return { newDocState: null }
+    // }
 
-    const configBrainstorm2 = {
-        mergeInitialState: true,
-        //mergeStateOnReconnect: true, // turn off for our app, then onReconnect do merge at higher up level
+    // const configBrainstorm2 = {
+    //     mergeInitialState: true,
+    //     //mergeStateOnReconnect: true, // turn off for our app, then onReconnect do merge at higher up level
 
-        onReconnectHandling: "" as
-            | "mergeLocalStateIntoOnline"
-            | "replaceLocalStateWithOnline", //| "addOnlineStateToLocalButDontAddLocalToOnline"
+    //     onReconnectHandling: "" as
+    //         | "mergeLocalStateIntoOnline"
+    //         | "replaceLocalStateWithOnline", //| "addOnlineStateToLocalButDontAddLocalToOnline"
 
-        callbackOnDisconnect: (
-            docStateOnDisconnectIsAlreadyCapturedInTheYDoc
-        ) => {},
-        callbackOnReconnect: () => {},
+    //     callbackOnDisconnect: (
+    //         docStateOnDisconnectIsAlreadyCapturedInTheYDoc
+    //     ) => {},
+    //     callbackOnReconnect: () => {},
 
-        // either: use the same yDoc for online and offline, do onRecconect=mergeLocalStateIntoOnline
-        // or: use a different yDoc for online and offline, do onReconnect=replaceLocalStateWithOnline, then manually merge the two docs however you want
-    }
+    //     // either: use the same yDoc for online and offline, do onRecconect=mergeLocalStateIntoOnline
+    //     // or: use a different yDoc for online and offline, do onReconnect=replaceLocalStateWithOnline, then manually merge the two docs however you want
+    // }
 
     // right now im not sure whether or not socketio will automatically rehydrate messages that we were meant to get while offline. or automatically send messages we were trying to send (pretty sure yes for sending). should turn off the latter.
 }
@@ -154,7 +184,7 @@ function createBaseYjsProvider(
     // const providerId = "provider"
 
     // subscribe to local doc updates
-    yDoc.on("update", (update, origin) => {
+    function onDocUpdate(update: Uint8Array, origin: any) {
         // don't react to updates applied by this provider
         if (origin === providerId) {
             return
@@ -162,30 +192,37 @@ function createBaseYjsProvider(
         // now this update was produced either locally or by another provider.
 
         onUpdate({ type: "doc", operation: update })
-    })
+    }
+    yDoc.on("update", onDocUpdate)
     // subscribe to local awareness updates
-    awareness.on("update", ({ added, updated, removed }) => {
+    function onAwarenessUpdate({ added, updated, removed }) {
         const changedClients = added.concat(updated).concat(removed)
         const encodedUpdate = encodeAwarenessUpdate(awareness, changedClients)
         onUpdate({ type: "awareness", operation: encodedUpdate })
-    })
+    }
+    awareness.on("update", onAwarenessUpdate)
 
     // remove ourselves from the awareness when we close the window (will be auto-detected after a while anyways)
     // should trigger awareness.on("update") which will trigger onUpdates, which will hopefully broadcast our removal to the server before the tab gets closed
+    function beforeWindowUnload() {
+        removeAwarenessStates(awareness, [yDoc.clientID], "window unload")
+    }
     if (removeClientAwarenessDataOnWindowClose) {
         try {
-            window.addEventListener("beforeunload", () => {
-                removeAwarenessStates(
-                    awareness,
-                    [yDoc.clientID],
-                    "window unload"
-                )
-            })
+            window.addEventListener("beforeunload", beforeWindowUnload)
         } catch (e) {
             console.warn(
                 "failed to add beforeunload listener to remove awareness state",
                 e
             )
+        }
+    }
+
+    function disconnectFromYDoc() {
+        yDoc.off("update", onDocUpdate)
+        awareness.off("update", onAwarenessUpdate)
+        if (removeClientAwarenessDataOnWindowClose) {
+            window.removeEventListener("beforeunload", beforeWindowUnload)
         }
     }
 
@@ -231,5 +268,7 @@ function createBaseYjsProvider(
             const updateIsEmpty = update.toString() === "0,0"
             return updateIsEmpty ? [] : [update]
         },
+
+        disconnect: disconnectFromYDoc,
     }
 }

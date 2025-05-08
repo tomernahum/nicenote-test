@@ -21,7 +21,7 @@
 		const promise = createCollaborativeQuillEditor(
 			noteElem,
 			props.remoteDocId,
-			getInitializeQuillEditor()
+			getInitializeQuillEditor(() => {})
 		);
 
 		promise.then((res) => {
