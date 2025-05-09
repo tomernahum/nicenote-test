@@ -291,7 +291,6 @@ export function createBaseYjsProvider(
 
         /**
          * Used for merging into the online doc
-         * Does not currently support awareness updates!
          */
         getChangesNotAppliedToAnotherDoc: (
             remoteDocUpdates: YProviderUpdate[]
@@ -307,11 +306,22 @@ export function createBaseYjsProvider(
 
             // calculate the diff between the onlineDoc and the local yDoc
             const remoteStateVector = Y.encodeStateVector(remoteDoc)
-            const update = Y.encodeStateAsUpdate(yDoc, remoteStateVector) // only writes the changes missing from remoteStateVector
+            const docUpdate = Y.encodeStateAsUpdate(yDoc, remoteStateVector) // only writes the changes missing from remoteStateVector
+
+            // gets the awareness state of the local doc. No optimizations to avoid redundant updates on this one
+            const awarenessUpdate = encodeAwarenessUpdate(awareness, [
+                yDoc.clientID,
+            ])
 
             // TODO: also support awareness updates?
 
-            return [{ type: "doc" as const, operation: update }]
+            return [
+                { type: "doc" as const, operation: docUpdate },
+                {
+                    type: "awareness" as const,
+                    operation: awarenessUpdate,
+                },
+            ]
         },
 
         disconnect: disconnectFromYDoc,

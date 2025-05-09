@@ -114,7 +114,6 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
         console.debug("applied current remote doc updates")
 
         // merge in any differing state as an update to the remote doc
-        // for our current yjs provider, this only merges up doc updates, not awareness updates
         if (applyLocalUpdatesToRemoteDoc) {
             const remoteDocUpdatesDecoded =
                 decodeWithRowIdToCrdt(remoteDocUpdates)
