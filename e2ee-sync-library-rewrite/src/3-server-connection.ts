@@ -84,10 +84,13 @@ export function getBaseServerConnectionInterface() {
         ) => {
             updateListeners.set(docId, callback)
 
+            console.log("SUBSCRIBING TO DOC", docId)
+
             socket.emit("startListeningToDoc", docId)
             socket.on(
                 "newUpdate",
                 (updateDocId: string, update: SealedUpdate, rowId) => {
+                    console.log("NEW UPDATE")
                     if (updateDocId !== docId) return
 
                     callback(new Uint8Array(update), rowId)

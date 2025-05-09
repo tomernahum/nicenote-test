@@ -190,8 +190,9 @@ function getBasicEncryptedServerInterface(
         subscribeToRemoteUpdates: (
             docId: DocId,
             callback: (newUpdates: ClientUpdate[], rowId: number) => void
-        ) =>
-            server.subscribeToRemoteUpdates(
+        ) => {
+            console.debug("SUBSCRIBING TO DOC111", docId)
+            return server.subscribeToRemoteUpdates(
                 docId,
                 async (sealedMessage, rowId) => {
                     const decryptedUpdates =
@@ -200,7 +201,8 @@ function getBasicEncryptedServerInterface(
                         )
                     callback(decryptedUpdates, rowId)
                 }
-            ),
+            )
+        },
         getRemoteUpdateList: async (docId: DocId) => {
             const sealedUpdates = await server.getRemoteUpdateList(docId)
             const decryptedUpdatesFinal = await Promise.all(

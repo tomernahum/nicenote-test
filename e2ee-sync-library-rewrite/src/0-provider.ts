@@ -65,6 +65,7 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     params: {
         remoteDocId: string
         cryptoConfig: CryptoConfig
+        timeBatchingConfig?: Parameters<typeof getServerInterface>[2]
         mergeInitialState?: boolean
         // TODO
         //onReconnect?: "mergeLocalStateIntoOnline" | "replaceLocalStateWithOnline"
@@ -75,9 +76,9 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     // connect to server
     const server = getServerInterface(
         params.remoteDocId,
-        await getInsecureCryptoConfigForTesting(),
-        {
-            timeBetweenUpdatesMs: 100,
+        params.cryptoConfig,
+        params.timeBatchingConfig ?? {
+            timeBetweenUpdatesMs: 200,
             sendUpdatesToServerWhenNoUserUpdate: true,
         }
     )
@@ -118,6 +119,15 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     })
     console.debug("registered listener for local crdt updates")
 
+    // listen for updates from the server and apply them to the local yDoc
+    server.subscribeToRemoteUpdates((updates) => {
+        const decodedUpdates = updates.map((update) =>
+            localInterfaceUpdateEncoder.decode(update)
+        )
+        localCrdtInterface.applyRemoteUpdates(decodedUpdates)
+    })
+    console.debug("registered listener for remote updates")
+
     // TODO: snapshotting
     // TODO: connection lost notification api
     //     maybe:
@@ -126,8 +136,6 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     //     onReconnected: () => void
     //     reconnectBehavior: "mergeWithLocal", "replaceLocal", "noAutoReconnect"
     //     See ./0-yjs-provider.ts comments
-
-    // todo: reorg func locations and stuff / delete old way
 
     return {
         disconnect: () => {
