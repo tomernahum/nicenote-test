@@ -19,14 +19,19 @@ import {
 export function getServerInterface(
     docId: DocId,
     cryptoConfig: CryptoConfig,
-    timeBatchingConfig: Parameters<typeof getServerInterfaceWithTimeBatching>[3]
+    timeBatchingConfig: Parameters<
+        typeof getServerInterfaceWithTimeBatching
+    >[3],
+    serverConnectionInterface?: BaseServerConnectionInterfaceShape,
+    cryptoFactory?: CryptoFactoryI
 ) {
-    const serverConnectionInterface = getBaseServerConnectionInterface()
-    const cryptoFactory = createCryptoFactory(cryptoConfig)
+    const serverConnectionInterfaceReal =
+        serverConnectionInterface ?? getBaseServerConnectionInterface()
+    const cryptoFactoryReal = cryptoFactory ?? createCryptoFactory(cryptoConfig)
     const server = getServerInterfaceWithTimeBatching(
         docId,
-        serverConnectionInterface,
-        cryptoFactory,
+        serverConnectionInterfaceReal,
+        cryptoFactoryReal,
         timeBatchingConfig
     )
     return {
