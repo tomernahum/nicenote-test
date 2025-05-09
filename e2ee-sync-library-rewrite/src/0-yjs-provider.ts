@@ -262,17 +262,24 @@ export function createBaseYjsProvider(
         yDoc,
 
         // yDoc helper functions
-        // WIP
+        // OLD
         getChangesNotAppliedToAnotherYDoc: (
             remoteDoc: Y.Doc | Uint8Array[]
         ) => {
+            console.warn({ remoteDoc })
             const remoteDocReal =
                 remoteDoc instanceof Y.Doc
                     ? remoteDoc
-                    : remoteDoc.reduce((acc, update) => {
-                          Y.applyUpdate(acc, update)
-                          return acc
-                      }, new Y.Doc())
+                    : buildYDocFromUpdates(remoteDoc)
+
+            function buildYDocFromUpdates(updates: Uint8Array[]) {
+                // error here...
+                const yDoc = new Y.Doc()
+                updates.forEach((update) => {
+                    Y.applyUpdate(yDoc, update)
+                })
+                return yDoc
+            }
 
             // calculate the diff between the onlineDoc and the local yDoc
             const remoteStateVector = Y.encodeStateVector(remoteDocReal)
@@ -280,6 +287,31 @@ export function createBaseYjsProvider(
 
             const updateIsEmpty = update.toString() === "0,0"
             return updateIsEmpty ? [] : [update]
+        },
+
+        /**
+         * Used for merging into the online doc
+         * Does not currently support awareness updates!
+         */
+        getChangesNotAppliedToAnotherDoc: (
+            remoteDocUpdates: YProviderUpdate[]
+            // may have been good to take an already merged/ ydoc?
+        ) => {
+            const remoteDoc = new Y.Doc()
+            remoteDocUpdates.forEach((update) => {
+                if (update.type == "awareness") {
+                    return //continue
+                }
+                Y.applyUpdate(remoteDoc, update.operation)
+            })
+
+            // calculate the diff between the onlineDoc and the local yDoc
+            const remoteStateVector = Y.encodeStateVector(remoteDoc)
+            const update = Y.encodeStateAsUpdate(yDoc, remoteStateVector) // only writes the changes missing from remoteStateVector
+
+            // TODO: also support awareness updates?
+
+            return [{ type: "doc" as const, operation: update }]
         },
 
         disconnect: disconnectFromYDoc,

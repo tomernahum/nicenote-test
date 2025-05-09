@@ -7,7 +7,7 @@ import {
     getInsecureCryptoConfigForTesting,
 } from "./2-crypto-factory"
 
-// TYPES
+// TYPES USED
 type localCrdtInterface<CRDTUpdate> = {
     applyRemoteUpdates: (updates: CRDTUpdate[]) => void
     subscribeToRemoteUpdates: (callback: (update: CRDTUpdate) => void) => void
@@ -25,32 +25,45 @@ type CRDTUpdateEncoder<CRDTUpdate> = {
 
 // ----
 
-export function createYjsSyncProvider(
+export async function createYjsSyncProvider(
     yDoc: YDoc,
     params: Parameters<typeof createCrdtSyncProvider>[2]
 ) {
     const yjsProvider = createBaseYjsProvider(yDoc)
-    const adaptedYjsProvider: localCrdtInterface<{
+    // Temp, will make it one thing later
+    // const adaptedYjsProvider = {
+    //     ...yjsProvider,
+    //     getChangesNotAppliedToAnotherDoc: (remoteDocChanges) => {
+    //         const updates = yjsProvider.getChangesNotAppliedToAnotherYDoc(
+    //             remoteDocChanges.map((update) => update.operation)
+    //         )
+    //         return updates.map((update) => ({
+    //             type: "doc",
+    //             operation: update,
+    //         }))
+    //         // merging awareness not currently supported in here
+    //     },
+    // } satisfies localCrdtInterface<{
+    //     type: "doc" | "awareness"
+    //     operation: Uint8Array
+    // }>
+    const adaptedYjsProvider = yjsProvider satisfies localCrdtInterface<{
         type: "doc" | "awareness"
         operation: Uint8Array
-    }> = {
-        ...yjsProvider,
-        getChangesNotAppliedToAnotherDoc: (remoteDocChanges) => {
-            const updates = yjsProvider.getChangesNotAppliedToAnotherYDoc(
-                remoteDocChanges.map((update) => update.operation)
-            )
-            return updates.map((update) => ({
-                type: "doc",
-                operation: update,
-            }))
-            // merging awareness not currently supported in here
-        },
-    }
-    return createCrdtSyncProvider(
+    }>
+    const crdtSyncProvider = await createCrdtSyncProvider(
         adaptedYjsProvider,
         yjsPUpdateEncoder(),
         params
     )
+    return {
+        awareness: adaptedYjsProvider.awareness,
+        ...crdtSyncProvider,
+    } satisfies {
+        disconnect: () => void
+
+        [key: string]: unknown
+    }
 }
 export async function createExampleYjsSyncProvider(yDoc: YDoc) {
     return createYjsSyncProvider(yDoc, {
@@ -101,10 +114,13 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
         console.debug("applied current remote doc updates")
 
         // merge in any differing state as an update to the remote doc
+        // for our current yjs provider, this only merges up doc updates, not awareness updates
         if (applyLocalUpdatesToRemoteDoc) {
+            const remoteDocUpdatesDecoded =
+                decodeWithRowIdToCrdt(remoteDocUpdates)
             const diffUpdates =
-                await localCrdtInterface.getChangesNotAppliedToAnotherDoc(
-                    decodeWithRowIdToCrdt(remoteDocUpdates)
+                localCrdtInterface.getChangesNotAppliedToAnotherDoc(
+                    remoteDocUpdatesDecoded
                 )
             server.addUpdates(encodeFromCrdt(diffUpdates))
         }
@@ -119,7 +135,13 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     })
     console.debug("registered listener for local crdt updates")
 
-    return
+    return {
+        disconnect: () => {
+            // beta
+            server.disconnect()
+            localCrdtInterface.disconnect()
+        },
+    }
 
     function decodeToCrdt(updates: ClientUpdate[]): CRDTUpdate[] {
         return updates.map((update) =>

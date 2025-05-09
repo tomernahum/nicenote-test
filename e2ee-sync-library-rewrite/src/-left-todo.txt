@@ -1,0 +1,8 @@
+
+
+- signing
+
+- disconnect api
+- api redesign
+    - may change it as I use it with frontend + key management service
+- snapshotting

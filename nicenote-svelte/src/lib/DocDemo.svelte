@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { createSyncedYDocProviderDemo } from '../../../e2ee-sync-library-rewrite/src/0-yjs-provider';
+	import { createYjsSyncProvider } from '../../../e2ee-sync-library-rewrite/src/0-provider-beta';
+
 	import { getInsecureCryptoConfigForTesting } from '../../../e2ee-sync-library-rewrite/src/2-crypto-factory';
 	import Quill from 'quill';
 	import QuillCursors from 'quill-cursors';
@@ -63,16 +65,22 @@
 
 		// using our local-provider provider
 
-		const remoteDocYBindingProvider = await createSyncedYDocProviderDemo(yDoc, {
-			remoteDocId
-		}).catch((error) => {
-			console.error('App: Failed to create remote doc provider!', error);
-			if (error instanceof Error) {
-				if (error.message.includes('connect failed')) {
-					// onConnectError(error);
-				}
-			}
-			throw error;
+		// const remoteDocYBindingProvider = await createSyncedYDocProviderDemo(yDoc, {
+		// 	remoteDocId
+		// }).catch((error) => {
+		// 	console.error('App: Failed to create remote doc provider!', error);
+		// 	if (error instanceof Error) {
+		// 		if (error.message.includes('connect failed')) {
+		// 			// onConnectError(error);
+		// 		}
+		// 	}
+		// 	throw error;
+		// });
+		const remoteDocYBindingProvider = await createYjsSyncProvider(yDoc, {
+			remoteDocId,
+			cryptoConfig: await getInsecureCryptoConfigForTesting(),
+			mergeInitialState: true
+			// mergeInitialState: false
 		});
 
 		// Specify awareness information for local user to integrate with quill-cursors
@@ -116,7 +124,7 @@
 		// we may want to use something other than quill (like prosemirror) for the final app
 		const promise = createCollaborativeQuillEditor({
 			domElement: noteElem,
-			remoteDocId: 'ABCD'
+			remoteDocId: 'EFGHI'
 		});
 		return async () => {
 			(await promise).deleteEditor();
