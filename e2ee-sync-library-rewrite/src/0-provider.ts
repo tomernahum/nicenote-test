@@ -1,5 +1,5 @@
 import { ClientUpdate } from "./-types"
-import { createBaseYjsProvider, yjsPUpdateEncoder } from "./0-yjs-provider"
+import { createBaseYjsProvider, yjsPUpdateEncoder } from "./0-yjs-interface"
 import type { Doc as YDoc } from "yjs"
 import { getServerInterface } from "./1-server-client"
 import {
@@ -137,8 +137,8 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
         },
     }
 
-    // helper functions 
-    
+    // helper functions
+
     function decodeToCrdt(updates: ClientUpdate[]): CRDTUpdate[] {
         return updates.map((update) =>
             localInterfaceUpdateEncoder.decode(update)

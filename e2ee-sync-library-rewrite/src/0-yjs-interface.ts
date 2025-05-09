@@ -9,7 +9,7 @@ import {
 import { getInsecureCryptoConfigForTesting } from "./2-crypto-factory"
 import { getServerInterface } from "./1-server-client"
 import { ClientUpdate } from "./-types"
-import { CRDTUpdateEncoder, localCrdtInterface } from "./0-provider-beta"
+import { CRDTUpdateEncoder, localCrdtInterface } from "./0-provider"
 
 /** @deprecated */
 export async function createSyncedYDocProviderDemo(

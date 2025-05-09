@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createSyncedYDocProviderDemo } from '../../../e2ee-sync-library-rewrite/src/0-yjs-provider';
-	import { createYjsSyncProvider } from '../../../e2ee-sync-library-rewrite/src/0-provider-beta';
+	import { createSyncedYDocProviderDemo } from '../../../e2ee-sync-library-rewrite/src/0-yjs-interface';
+	import { createYjsSyncProvider } from '../../../e2ee-sync-library-rewrite/src/0-provider';
 
 	import { getInsecureCryptoConfigForTesting } from '../../../e2ee-sync-library-rewrite/src/2-crypto-factory';
 	import Quill from 'quill';
