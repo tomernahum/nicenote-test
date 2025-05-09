@@ -246,3 +246,7 @@ function getBasicEncryptedServerInterface(
 
     return out
 }
+
+/**
+ * currently there are only persistent updates, which get compacted. it could be slightly useful to have separate ephemeral/awareness state section, but it's not necessary as long as we compact updates regularly
+ */

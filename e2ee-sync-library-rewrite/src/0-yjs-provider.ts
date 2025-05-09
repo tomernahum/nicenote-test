@@ -9,8 +9,9 @@ import {
 import { getInsecureCryptoConfigForTesting } from "./2-crypto-factory"
 import { getServerInterface } from "./1-server-client"
 import { ClientUpdate } from "./-types"
+import { CRDTUpdateEncoder, localCrdtInterface } from "./0-provider-beta"
 
-// maybe yjs and server-to-yjs-provider update could be abstracted out of this, then this code reused for all crdts which we will wrap like we did with yjs
+/** @deprecated */
 export async function createSyncedYDocProviderDemo(
     yDoc: Y.Doc,
     params: {
@@ -137,7 +138,7 @@ export async function createSyncedYDocProviderDemo(
     //     ) => {},
     //     callbackOnReconnect: () => {},
 
-    //     // either: use the same yDoc for online and offline, do onRecconect=mergeLocalStateIntoOnline
+    //     // either: use the same yDoc for online and offline, do onReconnect=mergeLocalStateIntoOnline
     //     // or: use a different yDoc for online and offline, do onReconnect=replaceLocalStateWithOnline, then manually merge the two docs however you want
     // }
 
@@ -149,7 +150,7 @@ type YProviderUpdate = {
     type: "doc" | "awareness"
     operation: Uint8Array
 }
-export function yjsPUpdateEncoder() {
+export function yjsPUpdateEncoder(): CRDTUpdateEncoder<YProviderUpdate> {
     return {
         encode: (providerUpdate: YProviderUpdate): LibraryUpdate => {
             // A simple encoding scheme: [type byte, ...operation bytes]
@@ -216,14 +217,14 @@ export function createBaseYjsProvider(
     }
     awareness.on("update", onAwarenessUpdate)
 
-    // remove ourselves from the awareness when we close the window (will be auto-detected after a while anyways)
-    // should trigger awareness.on("update") which will trigger onUpdates, which will hopefully broadcast our removal to the server before the tab gets closed
-    function beforeWindowUnload() {
+    // remove ourselves from the awareness when we close the window (otherwise will be auto-detected after a timeout)
+    // this should trigger awareness.on("update") which will trigger onUpdates, which will hopefully broadcast our removal to the server before the tab gets closed
+    function onBeforeWindowUnload() {
         removeAwarenessStates(awareness, [yDoc.clientID], "window unload")
     }
     if (removeClientAwarenessDataOnWindowClose) {
         try {
-            window.addEventListener("beforeunload", beforeWindowUnload)
+            window.addEventListener("beforeunload", onBeforeWindowUnload)
         } catch (e) {
             console.warn(
                 "failed to add window.beforeunload listener to remove awareness state",
@@ -232,11 +233,11 @@ export function createBaseYjsProvider(
         }
     }
 
-    function disconnectFromYDoc() {
+    /*returned*/ function disconnectFromYDoc() {
         yDoc.off("update", onDocUpdate)
         awareness.off("update", onAwarenessUpdate)
         if (removeClientAwarenessDataOnWindowClose) {
-            window.removeEventListener("beforeunload", beforeWindowUnload)
+            window.removeEventListener("beforeunload", onBeforeWindowUnload)
         }
     }
 
@@ -265,7 +266,7 @@ export function createBaseYjsProvider(
         yDoc,
 
         // yDoc helper functions
-        // OLD
+        /** @deprecated for {@link getChangesNotAppliedToAnotherDoc} */
         getChangesNotAppliedToAnotherYDoc: (
             remoteDoc: Y.Doc | Uint8Array[]
         ) => {
@@ -335,5 +336,7 @@ export function createBaseYjsProvider(
         ) => {
             onUpdate = callback
         },
-    }
+    } satisfies localCrdtInterface<YProviderUpdate> & {
+        [key: string]: unknown
+    } // there may be a better way out there to do this typing interface implementation thing
 }

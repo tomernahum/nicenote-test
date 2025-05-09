@@ -7,24 +7,9 @@ import {
     getInsecureCryptoConfigForTesting,
 } from "./2-crypto-factory"
 
-// TYPES USED
-type localCrdtInterface<CRDTUpdate> = {
-    applyRemoteUpdates: (updates: CRDTUpdate[]) => void
-    subscribeToRemoteUpdates: (callback: (update: CRDTUpdate) => void) => void
-
-    getChangesNotAppliedToAnotherDoc: (
-        remoteDocChanges: CRDTUpdate[]
-    ) => CRDTUpdate[] // maybe
-    disconnect: () => void
-}
-type CRDTUpdateEncoder<CRDTUpdate> = {
-    encode: (update: CRDTUpdate) => ClientUpdate
-    decode: (update: ClientUpdate) => CRDTUpdate
-    // Maybe replace decode with one that takes into account rowId?
-}
-
 // ----
 
+// may move this section somewhere (maybe yjs-provider.ts?)
 /**
  * You can also directly call {@link createCrdtSyncProvider}, with a local yjs provider wrapper ({@link createBaseYjsProvider}) (that creates an awareness object for the ydoc (and wraps it in a nicer interface for this library to use))
  */
@@ -32,12 +17,7 @@ export async function createYjsSyncProvider(
     yDoc: YDoc,
     params: Parameters<typeof createCrdtSyncProvider>[2]
 ) {
-    const yjsProvider = createBaseYjsProvider(
-        yDoc
-    ) satisfies localCrdtInterface<{
-        type: "doc" | "awareness"
-        operation: Uint8Array
-    }>
+    const yjsProvider = createBaseYjsProvider(yDoc)
 
     const syncProvider = await createCrdtSyncProvider(
         yjsProvider,
@@ -47,10 +27,6 @@ export async function createYjsSyncProvider(
     return {
         awareness: yjsProvider.awareness,
         ...syncProvider,
-    } satisfies {
-        disconnect: () => void
-
-        [key: string]: unknown
     }
 }
 export async function createExampleYjsSyncProvider(yDoc: YDoc) {
@@ -60,6 +36,26 @@ export async function createExampleYjsSyncProvider(yDoc: YDoc) {
         mergeInitialState: true,
     })
 }
+
+// ----
+
+// TYPES USED
+export type localCrdtInterface<CRDTUpdate> = {
+    applyRemoteUpdates: (updates: CRDTUpdate[]) => void
+    subscribeToRemoteUpdates: (callback: (update: CRDTUpdate) => void) => void
+
+    getChangesNotAppliedToAnotherDoc: (
+        remoteDocChanges: CRDTUpdate[]
+    ) => CRDTUpdate[] // maybe
+    disconnect: () => void
+}
+export type CRDTUpdateEncoder<CRDTUpdate> = {
+    encode: (update: CRDTUpdate) => ClientUpdate
+    decode: (update: ClientUpdate) => CRDTUpdate
+    // Maybe replace decode with one that takes into account rowId?
+}
+
+// ----
 
 // now can also create providers with same api but for any crdt (and I could make a crdt out of reducers too). Hopefully it is similar enough though
 
@@ -129,6 +125,9 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     //         or tryToReconnectOnConnectionLost: boolean,
     //     onReconnected: () => void
     //     reconnectBehavior: "mergeWithLocal", "replaceLocal", "noAutoReconnect"
+    //     See ./0-yjs-provider.ts comments
+
+    // todo: reorg func locations and stuff / delete old way
 
     return {
         disconnect: () => {
@@ -138,6 +137,8 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
         },
     }
 
+    // helper functions 
+    
     function decodeToCrdt(updates: ClientUpdate[]): CRDTUpdate[] {
         return updates.map((update) =>
             localInterfaceUpdateEncoder.decode(update)
