@@ -25,40 +25,28 @@ type CRDTUpdateEncoder<CRDTUpdate> = {
 
 // ----
 
+/**
+ * You can also directly call {@link createCrdtSyncProvider}, with a local yjs provider wrapper ({@link createBaseYjsProvider}) (that creates an awareness object for the ydoc (and wraps it in a nicer interface for this library to use))
+ */
 export async function createYjsSyncProvider(
     yDoc: YDoc,
     params: Parameters<typeof createCrdtSyncProvider>[2]
 ) {
-    const yjsProvider = createBaseYjsProvider(yDoc)
-    // Temp, will make it one thing later
-    // const adaptedYjsProvider = {
-    //     ...yjsProvider,
-    //     getChangesNotAppliedToAnotherDoc: (remoteDocChanges) => {
-    //         const updates = yjsProvider.getChangesNotAppliedToAnotherYDoc(
-    //             remoteDocChanges.map((update) => update.operation)
-    //         )
-    //         return updates.map((update) => ({
-    //             type: "doc",
-    //             operation: update,
-    //         }))
-    //         // merging awareness not currently supported in here
-    //     },
-    // } satisfies localCrdtInterface<{
-    //     type: "doc" | "awareness"
-    //     operation: Uint8Array
-    // }>
-    const adaptedYjsProvider = yjsProvider satisfies localCrdtInterface<{
+    const yjsProvider = createBaseYjsProvider(
+        yDoc
+    ) satisfies localCrdtInterface<{
         type: "doc" | "awareness"
         operation: Uint8Array
     }>
-    const crdtSyncProvider = await createCrdtSyncProvider(
-        adaptedYjsProvider,
+
+    const syncProvider = await createCrdtSyncProvider(
+        yjsProvider,
         yjsPUpdateEncoder(),
         params
     )
     return {
-        awareness: adaptedYjsProvider.awareness,
-        ...crdtSyncProvider,
+        awareness: yjsProvider.awareness,
+        ...syncProvider,
     } satisfies {
         disconnect: () => void
 
@@ -133,6 +121,14 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
         server.addUpdates(encodedUpdates)
     })
     console.debug("registered listener for local crdt updates")
+
+    // TODO: snapshotting
+    // TODO: connection lost notification api
+    //     maybe:
+    //     onReconnectStrategy: "mergeLocalStateIntoOnline" | "replaceLocalStateWithOnline" | "don't auto reconnect"
+    //         or tryToReconnectOnConnectionLost: boolean,
+    //     onReconnected: () => void
+    //     reconnectBehavior: "mergeWithLocal", "replaceLocal", "noAutoReconnect"
 
     return {
         disconnect: () => {

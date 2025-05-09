@@ -111,6 +111,58 @@
 		};
 	}
 
+	async function createFastLoadingCollaborativeQuillEditor(params: {
+		domElement: HTMLElement | string;
+		remoteDocId: string;
+	}) {
+		const { domElement, remoteDocId } = params;
+		const realDomElement =
+			domElement instanceof HTMLElement ? domElement : document.querySelector(domElement)!;
+		const quillWrapperElem = document.createElement('div');
+		quillWrapperElem.style.overflow = 'visible';
+		realDomElement.appendChild(quillWrapperElem);
+
+		const yDoc = new Y.Doc();
+		const yType = yDoc.getText('quill');
+
+		async function connectToOnline() {
+			const remoteDocYBindingProvider = await createYjsSyncProvider(yDoc, {
+				remoteDocId,
+				cryptoConfig: await getInsecureCryptoConfigForTesting(),
+				mergeInitialState: true
+			});
+
+			// Specify awareness information for local user to integrate with quill-cursors
+			remoteDocYBindingProvider.awareness.setLocalStateField('user', {
+				name: `anonymous ${getRandomAnimal()}`,
+				color: getRandomColor()
+			});
+			return remoteDocYBindingProvider;
+		}
+		const remoteDocYBindingProvider = connectToOnline();
+
+		const quillEditor = initializeQuillEditor(quillWrapperElem);
+		const quillBinding = new QuillBinding(yType, quillEditor, remoteDocYBindingProvider.awareness);
+
+		async function deleteEditor() {
+			await (await remoteDocYBindingProvider).disconnect();
+			yDoc.destroy();
+
+			// remove the dom element. Needs to be parent of the quillEditor container because the quill toolbars module is added next to the main quillEditor container
+			// const realElement = domElement instanceof HTMLElement ? domElement : document.querySelector(domElement)
+			const quillWrapperElem = quillEditor.container.parentElement;
+			quillWrapperElem?.remove();
+		}
+		return {
+			yDoc,
+			yType,
+			quillEditor,
+			quillBinding,
+			yBindingProvider: remoteDocYBindingProvider,
+			deleteEditor
+		};
+	}
+
 	let noteElem: HTMLDivElement; // defaults to undefined
 
 	let editor: Awaited<ReturnType<typeof createCollaborativeQuillEditor>>;

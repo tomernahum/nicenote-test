@@ -130,6 +130,7 @@ export async function createSyncedYDocProviderDemo(
     //     onReconnectHandling: "" as
     //         | "mergeLocalStateIntoOnline"
     //         | "replaceLocalStateWithOnline", //| "addOnlineStateToLocalButDontAddLocalToOnline"
+    //          | "don't autorecconnect"
 
     //     callbackOnDisconnect: (
     //         docStateOnDisconnectIsAlreadyCapturedInTheYDoc
@@ -258,6 +259,8 @@ export function createBaseYjsProvider(
 
     return {
         applyRemoteUpdates,
+
+        // (these are intended to be worked with directly, not encapsulated by this object, this object reacts to their changes)
         awareness,
         yDoc,
 
