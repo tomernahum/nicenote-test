@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createSyncedYDocProviderDemo } from '../../../e2ee-sync-library-rewrite/src/0-yjs-interface';
+	import { createSyncedYDocProviderDemo } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
 	import { createYjsSyncProvider } from '../../../e2ee-sync-library-rewrite/src/0-provider';
 
 	import { getInsecureCryptoConfigForTesting } from '../../../e2ee-sync-library-rewrite/src/2-crypto-factory';

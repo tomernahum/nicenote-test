@@ -6,3 +6,5 @@
 - api redesign
     - may change it as I use it with frontend + key management service
 - snapshotting
+
+maybe replay updates with delay in the timebatched server thing

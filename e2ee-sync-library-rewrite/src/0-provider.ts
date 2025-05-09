@@ -1,5 +1,5 @@
 import { ClientUpdate } from "./-types"
-import { createBaseYjsProvider, yjsPUpdateEncoder } from "./0-yjs-interface"
+import { createBaseYjsProvider, yjsPUpdateEncoder } from "./0-interface-yjs"
 import type { Doc as YDoc } from "yjs"
 import { getServerInterface } from "./1-server-client"
 import {
