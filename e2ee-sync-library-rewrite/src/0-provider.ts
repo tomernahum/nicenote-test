@@ -12,7 +12,7 @@ import {
 // TYPES USED
 export type localCrdtInterface<CRDTUpdate> = {
     applyRemoteUpdates: (updates: CRDTUpdate[]) => void
-    subscribeToRemoteUpdates: (callback: (update: CRDTUpdate) => void) => void
+    subscribeToLocalUpdates: (callback: (update: CRDTUpdate) => void) => void
 
     getChangesNotAppliedToAnotherDoc: (
         remoteDocChanges: CRDTUpdate[]
@@ -51,6 +51,7 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
         params.timeBatchingConfig ?? {
             timeBetweenUpdatesMs: 200,
             sendUpdatesToServerWhenNoUserUpdate: true,
+            // sendUpdatesToServerWhenNoUserUpdate: false,
         }
     )
     console.debug("created server interface")
@@ -84,7 +85,7 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
 
     // subscribe to local updates and send them to the server
     let sentUpdateCountSinceLastSnapshot = 0
-    localCrdtInterface.subscribeToRemoteUpdates((update) => {
+    localCrdtInterface.subscribeToLocalUpdates((update) => {
         console.debug("local crdt update detected", update)
         const encodedUpdates = encodeFromCrdt([update])
         server.addUpdates(encodedUpdates)
@@ -99,6 +100,7 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
             localInterfaceUpdateEncoder.decode(update)
         )
         localCrdtInterface.applyRemoteUpdates(decodedUpdates)
+        console.debug(`applied (${decodedUpdates.length}) new remote updates`)
 
         if (rowId > highestUpdateRowSeen) {
             highestUpdateRowSeen = rowId
@@ -107,7 +109,6 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     console.debug("registered listener for remote updates")
 
     // TODO: snapshotting
-    let lastRowSnapshottedOn = -1
     async function doSnapshot() {
         const snapshotUpdatesRaw = localCrdtInterface.getSnapshot()
         const encodedSnapshotUpdates = snapshotUpdatesRaw.map(
@@ -120,17 +121,22 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     }
     // currently no way to tell when somebody else did a snapshot. Could add this as a server event/method
     // instead for now we'll just do it semi-randomly // TODO: make it more intelligent
-
     const SNAPSHOT_EVERY_MS = 5000
     const SNAPSHOT_MIN_UPDATE_COUNT = 5 // todo: replace this with total unsnapshotted updates from the doc instead of ones from this client
     setTimeout(() => {
         setInterval(() => {
+            console.debug(
+                "considering doing snapshot",
+                sentUpdateCountSinceLastSnapshot
+            )
             if (sentUpdateCountSinceLastSnapshot >= SNAPSHOT_MIN_UPDATE_COUNT) {
+                console.debug("doing snapshot")
                 doSnapshot()
                 sentUpdateCountSinceLastSnapshot = 0
             }
         }, SNAPSHOT_EVERY_MS)
     }, Math.random() * SNAPSHOT_EVERY_MS) // offset randomly at the start so that clients don't all do snapshots at the same time
+    // TODO: INSECURE: this leaks how many updates we've really done to the server, instead of how many we've sent to it.
 
     // TODO: connection lost notification api
     //     maybe:

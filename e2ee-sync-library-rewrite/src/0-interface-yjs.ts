@@ -383,7 +383,7 @@ export function createBaseYjsProvider(
         disconnect: disconnectFromYDoc,
 
         /** only supports one subscriber at a time (that is all that is needed currently) */
-        subscribeToRemoteUpdates: (
+        subscribeToLocalUpdates: (
             callback: (update: YProviderUpdate) => void
         ) => {
             onUpdate = callback

@@ -90,7 +90,7 @@ export function getBaseServerConnectionInterface() {
             socket.on(
                 "newUpdate",
                 (updateDocId: string, update: SealedUpdate, rowId) => {
-                    console.log("NEW UPDATE")
+                    // console.debug("NEW UPDATE")
                     if (updateDocId !== docId) return
 
                     callback(new Uint8Array(update), rowId)
