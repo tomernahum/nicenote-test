@@ -48,7 +48,7 @@ function getServerInterfaceWithTimeBatching(
     timeBatchingConfig: {
         timeBetweenUpdatesMs: number
         sendUpdatesToServerWhenNoUserUpdate: boolean // if true, will send an update to the server even if there are no new updates from the user, this is done to obfuscate to the server when/how often the user is making updates (eg how much they are typing)
-        // TODO maybe: if user is not generating updates, send updates periodically but not as frequently as if they are generating updates
+        // TODO maybe: if user is not generating updates, send updates periodically but not as frequently as if they are generating updates // if this actually provides a security benefit...
 
         // minTimeBetweenUpdatesMs: number,
         // maxTimeBetweenUpdatesMs: number | "unlimited",

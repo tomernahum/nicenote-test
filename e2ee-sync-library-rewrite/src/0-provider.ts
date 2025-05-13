@@ -135,13 +135,20 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     // i just realized snapshotting is likely free for us since it's ingress. so we might as well actually snapshot constantly. except not free for user if user is billed on upload data, which they would be esp if on mobile. but cheap for user
     setTimeout(() => {
         setInterval(() => {
-            const updatesReceivedSinceLastSnapshot =
+            const updatePackagesReceivedSinceLastSnapshot =
                 highestUpdateRowSeen - updateRowOfLastSnapshot
             // todo: make based on received updates that have not been snapshotted by another client. ie make updateRowOfLastSnapshot take other's snapshots into account
+
+            console.debug("considering doing snapshot", {
+                updatePackagesReceivedSinceLastSnapshot,
+                realSnapshotMinUpdateCount,
+            })
             if (
-                updatesReceivedSinceLastSnapshot >= realSnapshotMinUpdateCount
+                updatePackagesReceivedSinceLastSnapshot >=
+                realSnapshotMinUpdateCount // includes case of updateRowOfLastSnapshot being -1
             ) {
                 doSnapshot()
+                console.debug("did snapshot")
             }
         }, snapshotIntervalMs)
     }, Math.random() * snapshotIntervalMs) // offset randomly at the start so that clients don't all do snapshots at the same time
