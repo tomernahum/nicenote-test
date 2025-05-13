@@ -18,6 +18,7 @@ export type localCrdtInterface<CRDTUpdate> = {
         remoteDocChanges: CRDTUpdate[]
     ) => CRDTUpdate[]
     getSnapshot: () => CRDTUpdate[]
+    // maybe: createSnapshot: (updatesToMerge: CRDTUpdate[]) => CRDTUpdate[] // (pure)
     disconnect: () => void
 }
 export type CRDTUpdateEncoder<CRDTUpdate> = {
@@ -37,7 +38,9 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
         remoteDocId: string
         cryptoConfig: CryptoConfig
         timeBatchingConfig?: Parameters<typeof getServerInterface>[2]
-        mergeInitialState?: boolean
+        mergeInitialState?: boolean //note to caller: if set to false and doc has any initial state than it might diverge
+        snapshotIntervalMs?: number
+        snapshotMinUpdateCount?: number
         // TODO
         //onReconnect?: "mergeLocalStateIntoOnline" | "replaceLocalStateWithOnline"
     }
@@ -80,16 +83,15 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
                 )
             server.addUpdates(encodeFromCrdt(diffUpdates))
         }
+        // otherwise caller should have emptied the local crdt themselves...
     }
     await syncInitialState(params.mergeInitialState ?? true)
 
     // subscribe to local updates and send them to the server
-    let sentUpdateCountSinceLastSnapshot = 0
     localCrdtInterface.subscribeToLocalUpdates((update) => {
         console.debug("local crdt update detected", update)
         const encodedUpdates = encodeFromCrdt([update])
         server.addUpdates(encodedUpdates)
-        sentUpdateCountSinceLastSnapshot += 1
     })
     console.debug("registered listener for local crdt updates")
 
@@ -108,7 +110,8 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     })
     console.debug("registered listener for remote updates")
 
-    // TODO: snapshotting
+    // periodically snapshot the doc to prevent it growing to big
+    let updateRowOfLastSnapshot = -1
     async function doSnapshot() {
         const snapshotUpdatesRaw = localCrdtInterface.getSnapshot()
         const encodedSnapshotUpdates = snapshotUpdatesRaw.map(
@@ -118,24 +121,30 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
         // Applies the snapshot replacing up to the last update seen by the client
         // NOTE / DEBUGGING: if the client gets updates out of order, this may accidentally replace updates not captured in the snapshot
         server.applySnapshot(encodedSnapshotUpdates, highestUpdateRowSeen)
+        updateRowOfLastSnapshot = highestUpdateRowSeen
     }
     // currently no way to tell when somebody else did a snapshot. Could add this as a server event/method
+    // you can also fetch the whole doc to see how many updates are in it.
+    // could even use that remote update list to construct the snapshot instead of the local crdt state. this would prevent accidentally sneaking in newer changes (which seems fine though), (wouldn't prevent maliciously sneaking in changes)
     // instead for now we'll just do it semi-randomly // TODO: make it more intelligent
-    const SNAPSHOT_EVERY_MS = 5000
-    const SNAPSHOT_MIN_UPDATE_COUNT = 5 // todo: replace this with total unsnapshotted updates from the doc instead of ones from this client
+    const snapshotIntervalMs = params.snapshotIntervalMs ?? 5000
+    const realSnapshotMinUpdateCount = params.snapshotMinUpdateCount // randomizing it a bit so that clients don't all fire at the same time
+        ? params.snapshotMinUpdateCount +
+          (Math.random() - 0.5) * params.snapshotMinUpdateCount
+        : 5 + (Math.random() - 0.5) * 5
+    // i just realized snapshotting is likely free for us since it's ingress. so we might as well actually snapshot constantly. except not free for user if user is billed on upload data, which they would be esp if on mobile. but cheap for user
     setTimeout(() => {
         setInterval(() => {
-            console.debug(
-                "considering doing snapshot",
-                sentUpdateCountSinceLastSnapshot
-            )
-            if (sentUpdateCountSinceLastSnapshot >= SNAPSHOT_MIN_UPDATE_COUNT) {
-                console.debug("doing snapshot")
+            const updatesReceivedSinceLastSnapshot =
+                highestUpdateRowSeen - updateRowOfLastSnapshot
+            // todo: make based on received updates that have not been snapshotted by another client. ie make updateRowOfLastSnapshot take other's snapshots into account
+            if (
+                updatesReceivedSinceLastSnapshot >= realSnapshotMinUpdateCount
+            ) {
                 doSnapshot()
-                sentUpdateCountSinceLastSnapshot = 0
             }
-        }, SNAPSHOT_EVERY_MS)
-    }, Math.random() * SNAPSHOT_EVERY_MS) // offset randomly at the start so that clients don't all do snapshots at the same time
+        }, snapshotIntervalMs)
+    }, Math.random() * snapshotIntervalMs) // offset randomly at the start so that clients don't all do snapshots at the same time
     // TODO: INSECURE: this leaks how many updates we've really done to the server, instead of how many we've sent to it.
 
     // TODO: connection lost notification api

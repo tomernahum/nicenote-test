@@ -295,42 +295,29 @@ export function createBaseYjsProvider(
     // ---
 
     return {
-        applyRemoteUpdates,
-
         // (these are intended to be worked with directly, not encapsulated by this object, this object reacts to their changes)
         awareness,
         yDoc,
 
-        // yDoc helper functions
-        /** @deprecated for {@link getChangesNotAppliedToAnotherDoc} */
-        getChangesNotAppliedToAnotherYDoc: (
-            remoteDoc: Y.Doc | Uint8Array[]
-        ) => {
-            console.warn({ remoteDoc })
-            const remoteDocReal =
-                remoteDoc instanceof Y.Doc
-                    ? remoteDoc
-                    : buildYDocFromUpdates(remoteDoc)
-
-            function buildYDocFromUpdates(updates: Uint8Array[]) {
-                // error here...
-                const yDoc = new Y.Doc()
-                updates.forEach((update) => {
-                    Y.applyUpdate(yDoc, update)
-                })
-                return yDoc
-            }
-
-            // calculate the diff between the onlineDoc and the local yDoc
-            const remoteStateVector = Y.encodeStateVector(remoteDocReal)
-            const update = Y.encodeStateAsUpdate(yDoc, remoteStateVector) // only writes the changes missing from remoteStateVector
-
-            const updateIsEmpty = update.toString() === "0,0"
-            return updateIsEmpty ? [] : [update]
-        },
+        //
+        applyRemoteUpdates,
 
         /**
+         * Initial subscriber is passed in as a parameter.
+         * Only supports one subscriber at a time (that is all that is needed currently).
+         */
+        subscribeToLocalUpdates: (
+            callback: (update: YProviderUpdate) => void
+        ) => {
+            onUpdate = callback
+        },
+
+        disconnect: disconnectFromYDoc,
+
+        // we could actually just use getSnapshot here instead (less efficient but it's called often anyways), with or without actually replacing the rows that are snapshotted.
+        /**
          * Used for merging into the online doc
+         * if you are lazy implementing this in another provider, you could just return getSnapshot
          */
         getChangesNotAppliedToAnotherDoc: (
             remoteDocUpdates: YProviderUpdate[]
@@ -353,15 +340,13 @@ export function createBaseYjsProvider(
                 yDoc.clientID,
             ])
 
-            // TODO: also support awareness updates?
-
             return [
-                { type: "doc" as const, operation: docUpdate },
+                { type: "doc", operation: docUpdate },
                 {
-                    type: "awareness" as const,
+                    type: "awareness",
                     operation: awarenessUpdate,
                 },
-            ]
+            ] as const
         },
 
         getSnapshot() {
@@ -372,21 +357,12 @@ export function createBaseYjsProvider(
                 awarenessClients
             )
             return [
-                { type: "doc" as const, operation: yDocSnapshot },
+                { type: "doc", operation: yDocSnapshot },
                 {
-                    type: "awareness" as const,
+                    type: "awareness",
                     operation: yAwarenessSnapshot,
                 },
-            ]
-        },
-
-        disconnect: disconnectFromYDoc,
-
-        /** only supports one subscriber at a time (that is all that is needed currently) */
-        subscribeToLocalUpdates: (
-            callback: (update: YProviderUpdate) => void
-        ) => {
-            onUpdate = callback
+            ] as const
         },
     } satisfies localCrdtInterface<YProviderUpdate> & {
         [key: string]: unknown
