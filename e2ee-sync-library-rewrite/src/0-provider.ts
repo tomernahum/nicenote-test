@@ -16,7 +16,8 @@ export type localCrdtInterface<CRDTUpdate> = {
 
     getChangesNotAppliedToAnotherDoc: (
         remoteDocChanges: CRDTUpdate[]
-    ) => CRDTUpdate[] // maybe
+    ) => CRDTUpdate[]
+    getSnapshot: () => CRDTUpdate[]
     disconnect: () => void
 }
 export type CRDTUpdateEncoder<CRDTUpdate> = {
@@ -90,29 +91,29 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     console.debug("registered listener for local crdt updates")
 
     // listen for updates from the server and apply them to the local yDoc
-    server.subscribeToRemoteUpdates((updates) => {
+    let highestUpdateRowSeen = -1
+    server.subscribeToRemoteUpdates((updates, rowId) => {
         const decodedUpdates = updates.map((update) =>
             localInterfaceUpdateEncoder.decode(update)
         )
         localCrdtInterface.applyRemoteUpdates(decodedUpdates)
+
+        if (rowId > highestUpdateRowSeen) {
+            highestUpdateRowSeen = rowId
+        }
     })
     console.debug("registered listener for remote updates")
 
     // TODO: snapshotting
     async function doSnapshot() {
-        // const yDocSnapshot = Y.encodeStateAsUpdate(yDoc)
-        // const awarenessClients = Array.from(awareness.getStates().keys())
-        // const yAwarenessSnapshot = encodeAwarenessUpdate(
-        //     awareness,
-        //     awarenessClients
-        // )
-        // await broadcastSnapshot(
-        //     [
-        //         { bucket: "doc", operation: yDocSnapshot },
-        //         { bucket: "awareness", operation: yAwarenessSnapshot },
-        //     ],
-        //     "auto"
-        // )
+        const snapshotUpdatesRaw = localCrdtInterface.getSnapshot()
+        const encodedSnapshotUpdates = snapshotUpdatesRaw.map(
+            localInterfaceUpdateEncoder.encode
+        )
+
+        // Applies the snapshot replacing up to the last update seen by the client
+        // NOTE / DEBUGGING: if the client gets updates out of order, this may accidentally replace updates not captured in the snapshot
+        server.applySnapshot(encodedSnapshotUpdates, highestUpdateRowSeen)
     }
 
     // TODO: connection lost notification api

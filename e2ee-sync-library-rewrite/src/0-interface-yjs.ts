@@ -364,6 +364,22 @@ export function createBaseYjsProvider(
             ]
         },
 
+        getSnapshot() {
+            const yDocSnapshot = Y.encodeStateAsUpdate(yDoc)
+            const awarenessClients = Array.from(awareness.getStates().keys())
+            const yAwarenessSnapshot = encodeAwarenessUpdate(
+                awareness,
+                awarenessClients
+            )
+            return [
+                { type: "doc" as const, operation: yDocSnapshot },
+                {
+                    type: "awareness" as const,
+                    operation: yAwarenessSnapshot,
+                },
+            ]
+        },
+
         disconnect: disconnectFromYDoc,
 
         /** only supports one subscriber at a time (that is all that is needed currently) */

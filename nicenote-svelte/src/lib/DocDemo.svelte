@@ -125,6 +125,9 @@
 		const yDoc = new Y.Doc();
 		const yType = yDoc.getText('quill');
 
+		const quillEditor = initializeQuillEditor(quillWrapperElem);
+		let quillBinding: QuillBinding;
+
 		async function connectToOnline() {
 			const remoteDocYBindingProvider = await createYjsSyncProvider(yDoc, {
 				remoteDocId,
@@ -137,12 +140,12 @@
 				name: `anonymous ${getRandomAnimal()}`,
 				color: getRandomColor()
 			});
+
+			quillBinding = new QuillBinding(yType, quillEditor, remoteDocYBindingProvider.awareness);
+
 			return remoteDocYBindingProvider;
 		}
 		const remoteDocYBindingProvider = connectToOnline();
-
-		const quillEditor = initializeQuillEditor(quillWrapperElem);
-		const quillBinding = new QuillBinding(yType, quillEditor, remoteDocYBindingProvider.awareness);
 
 		async function deleteEditor() {
 			await (await remoteDocYBindingProvider).disconnect();
@@ -157,7 +160,7 @@
 			yDoc,
 			yType,
 			quillEditor,
-			quillBinding,
+			quillBinding: () => quillBinding,
 			yBindingProvider: remoteDocYBindingProvider,
 			deleteEditor
 		};

@@ -191,7 +191,6 @@ function getBasicEncryptedServerInterface(
             docId: DocId,
             callback: (newUpdates: ClientUpdate[], rowId: number) => void
         ) => {
-            console.debug("SUBSCRIBING TO DOC111", docId)
             return server.subscribeToRemoteUpdates(
                 docId,
                 async (sealedMessage, rowId) => {
