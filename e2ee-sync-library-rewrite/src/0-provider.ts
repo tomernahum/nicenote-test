@@ -142,6 +142,8 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
             // beta
             server.disconnect()
             localCrdtInterface.disconnect()
+
+            // cached server data is stored in the local CRDT interface (ydoc object)
         },
     }
 

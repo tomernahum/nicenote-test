@@ -5,6 +5,11 @@
 - disconnect api
 - api redesign
     - may change it as I use it with frontend + key management service
+    - make sure it is compatible with frontend rerendering
+        - take inspo from tanstack query. maybe add (wrapper library?) with staleTime where it keeps the data being synced even after the component with the yDoc is deleted. or maybe can do that manually idk
 - snapshotting
 
-maybe replay updates with delay in the timebatched server thing
+- 
+
+Later
+- replay updates with delay in the timebatched server thing

@@ -59,7 +59,7 @@ export function getBaseServerConnectionInterface() {
             })
         },
 
-        /** If all instances of serverConnectionInterface are disconnected, the underlying socketio/websocket connection to the server will be closed  */
+        /** If all instances of serverConnectionInterface are disconnected, the underlying socketio/websocket connection to the server will be closed. may be better to do by docId  */
         disconnect: () => {
             return new Promise<void>((resolve) => {
                 serverConnections.splice(serverConnections.indexOf(myId), 1)
