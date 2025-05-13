@@ -219,7 +219,7 @@ function getBasicEncryptedServerInterface(
             return decryptedUpdatesFinal.flat()
         },
 
-        /** @param updates recommended to be one update per bucket */
+        /** @param updates recommended to minimize the total byte size, and then the count*/
         applySnapshot: async (
             docId: DocId,
             updates: ClientUpdate[],
