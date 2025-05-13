@@ -9,7 +9,42 @@ import {
 import { getInsecureCryptoConfigForTesting } from "./2-crypto-factory"
 import { getServerInterface } from "./1-server-client"
 import { ClientUpdate } from "./-types"
-import { CRDTUpdateEncoder, localCrdtInterface } from "./0-provider"
+import {
+    CRDTUpdateEncoder,
+    createCrdtSyncProvider,
+    localCrdtInterface,
+} from "./0-provider"
+
+// ----
+
+/**
+ * You can also directly call {@link createCrdtSyncProvider}, with a local yjs provider wrapper ({@link createBaseYjsProvider}) (that creates an awareness object for the ydoc (and wraps it in a nicer interface for this library to use))
+ */
+export async function createYjsSyncProvider(
+    yDoc: Y.Doc,
+    params: Parameters<typeof createCrdtSyncProvider>[2]
+) {
+    const yjsProvider = createBaseYjsProvider(yDoc)
+
+    const syncProvider = await createCrdtSyncProvider(
+        yjsProvider,
+        yjsPUpdateEncoder(),
+        params
+    )
+    return {
+        awareness: yjsProvider.awareness,
+        ...syncProvider,
+    }
+}
+export async function createExampleYjsSyncProvider(yDoc: Y.Doc) {
+    return createYjsSyncProvider(yDoc, {
+        remoteDocId: "test",
+        cryptoConfig: await getInsecureCryptoConfigForTesting(),
+        mergeInitialState: true,
+    })
+}
+
+// ----
 
 /** @deprecated */
 export async function createSyncedYDocProviderDemo(
@@ -144,6 +179,7 @@ export async function createSyncedYDocProviderDemo(
 
     // right now im not sure whether or not socketio will automatically rehydrate messages that we were meant to get while offline. or automatically send messages we were trying to send (pretty sure yes for sending). should turn off the latter.
 }
+// ----
 
 type LibraryUpdate = ClientUpdate
 type YProviderUpdate = {

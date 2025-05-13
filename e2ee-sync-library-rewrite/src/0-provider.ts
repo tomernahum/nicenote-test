@@ -9,36 +9,6 @@ import {
 
 // ----
 
-// may move this section somewhere (maybe yjs-provider.ts?)
-/**
- * You can also directly call {@link createCrdtSyncProvider}, with a local yjs provider wrapper ({@link createBaseYjsProvider}) (that creates an awareness object for the ydoc (and wraps it in a nicer interface for this library to use))
- */
-export async function createYjsSyncProvider(
-    yDoc: YDoc,
-    params: Parameters<typeof createCrdtSyncProvider>[2]
-) {
-    const yjsProvider = createBaseYjsProvider(yDoc)
-
-    const syncProvider = await createCrdtSyncProvider(
-        yjsProvider,
-        yjsPUpdateEncoder(),
-        params
-    )
-    return {
-        awareness: yjsProvider.awareness,
-        ...syncProvider,
-    }
-}
-export async function createExampleYjsSyncProvider(yDoc: YDoc) {
-    return createYjsSyncProvider(yDoc, {
-        remoteDocId: "test",
-        cryptoConfig: await getInsecureCryptoConfigForTesting(),
-        mergeInitialState: true,
-    })
-}
-
-// ----
-
 // TYPES USED
 export type localCrdtInterface<CRDTUpdate> = {
     applyRemoteUpdates: (updates: CRDTUpdate[]) => void
@@ -129,6 +99,22 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     console.debug("registered listener for remote updates")
 
     // TODO: snapshotting
+    async function doSnapshot() {
+        // const yDocSnapshot = Y.encodeStateAsUpdate(yDoc)
+        // const awarenessClients = Array.from(awareness.getStates().keys())
+        // const yAwarenessSnapshot = encodeAwarenessUpdate(
+        //     awareness,
+        //     awarenessClients
+        // )
+        // await broadcastSnapshot(
+        //     [
+        //         { bucket: "doc", operation: yDocSnapshot },
+        //         { bucket: "awareness", operation: yAwarenessSnapshot },
+        //     ],
+        //     "auto"
+        // )
+    }
+
     // TODO: connection lost notification api
     //     maybe:
     //     onReconnectStrategy: "mergeLocalStateIntoOnline" | "replaceLocalStateWithOnline" | "don't auto reconnect"
