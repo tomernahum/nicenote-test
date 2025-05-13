@@ -139,10 +139,10 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
                 highestUpdateRowSeen - updateRowOfLastSnapshot
             // todo: make based on received updates that have not been snapshotted by another client. ie make updateRowOfLastSnapshot take other's snapshots into account
 
-            console.debug("considering doing snapshot", {
-                updatePackagesReceivedSinceLastSnapshot,
-                realSnapshotMinUpdateCount,
-            })
+            // console.debug(new Date(), "considering doing snapshot", {
+            //     updatePackagesReceivedSinceLastSnapshot,
+            //     realSnapshotMinUpdateCount,
+            // })
             if (
                 updatePackagesReceivedSinceLastSnapshot >=
                 realSnapshotMinUpdateCount // includes case of updateRowOfLastSnapshot being -1

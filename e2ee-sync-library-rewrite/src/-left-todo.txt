@@ -1,15 +1,18 @@
 
 
 - signing
-
 - disconnect api
-- api redesign
-    - may change it as I use it with frontend + key management service
-    - make sure it is compatible with frontend rerendering
-        - take inspo from tanstack query. maybe add (wrapper library?) with staleTime where it keeps the data being synced even after the component with the yDoc is deleted. or maybe can do that manually idk
-- snapshotting
-
-- 
 
 Later
 - replay updates with delay in the timebatched server thing
+- api redesign
+    - may change it as I use it with frontend + key management service
+    - make sure it is compatible with frontend rerendering
+        - take inspo from tanstack query. maybe add (wrapper library?) with staleTime where it keeps the data being synced even after the component with the yDoc is deleted. or maybe can do that manually idk. or not really needed and if it is we can do it in react/svelte land
+- stress test
+    - make sure it's ok to treat row ids as less than the max storable int (I think it is), or make them reset/loop, or use a bigint everywhere. In theory transaction could insert a row of id 0, right?
+
+
+
+Topics to research
+- debugging in production and logging. providing way for users to send logs report or opt in to automatic telemetry

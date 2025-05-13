@@ -364,6 +364,10 @@ export function createBaseYjsProvider(
                 },
             ] as const
         },
+
+        reset() {
+            //
+        },
     } satisfies localCrdtInterface<YProviderUpdate> & {
         [key: string]: unknown
     } // there may be a better way out there to do this typing interface implementation thing

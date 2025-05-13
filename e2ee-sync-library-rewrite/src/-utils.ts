@@ -42,6 +42,17 @@ export async function tryCatch<T, E = Error>(
     }
 }
 
+export async function tryCatch2<T, E = Error>(
+    promise: Promise<T>
+): Promise<[T, null] | [null, E]> {
+    try {
+        const data = await promise
+        return [data, null] as const
+    } catch (error) {
+        return [null, error as E] as const
+    }
+}
+
 // export async function tryCatch2<T>(promise: Promise<T>) {
 //     try {
 //         const data = await promise
