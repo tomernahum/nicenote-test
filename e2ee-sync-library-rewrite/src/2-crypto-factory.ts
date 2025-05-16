@@ -142,7 +142,7 @@ async function getNonSecretHardCodedKeyForTestingSymmetricEncryption(
 }
 // ----
 
-function createEncodingLogic() {
+export function createEncodingLogic() {
     const SIZE_PREFIX_LENGTH = 4 // note this. This will be annoying to change while maintaining backwards compatibility. luckily it won't need to change for a long time as there are technically 4+ billion possible values. or at least 26 * 1000
 
     // all this code could probably be improved, but it does work.

@@ -1,9 +1,9 @@
-import { ClientUpdate } from "./-types"
+import { type ClientUpdate } from "./-types"
 import { createBaseYjsProvider, yjsPUpdateEncoder } from "./0-interface-yjs"
 import type { Doc as YDoc } from "yjs"
 import { getServerInterface } from "./1-server-client"
 import {
-    CryptoConfig,
+    type CryptoConfig,
     getInsecureCryptoConfigForTesting,
 } from "./2-crypto-factory"
 
