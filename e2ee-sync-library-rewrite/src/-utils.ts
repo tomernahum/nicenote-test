@@ -53,11 +53,19 @@ export async function tryCatch2<T, E = Error>(
     }
 }
 
-// export async function tryCatch2<T>(promise: Promise<T>) {
-//     try {
-//         const data = await promise
-//         return { data, error: null } as const
-//     } catch (error) {
-//         return { data: null, error: error as Error } as const
-//     }
-// }
+export function tryCatch2SyncFn<T, E = Error>(
+    fn: () => T
+): [T, null] | [null, E] {
+    try {
+        const data = fn()
+        return [data, null] as const
+    } catch (error) {
+        return [null, error as E] as const
+    }
+}
+
+export function doIf<T>(condition: boolean, fn: () => T) {
+    if (condition) {
+        return fn()
+    } else return undefined
+}

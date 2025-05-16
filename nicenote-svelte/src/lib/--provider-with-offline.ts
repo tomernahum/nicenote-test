@@ -13,7 +13,7 @@ import {
 	type CRDTUpdateEncoder,
 	type localCrdtInterface
 } from '../../../e2ee-sync-library-rewrite/src/0-provider';
-import { tryCatch2 } from '../../../e2ee-sync-library-rewrite/src/-utils';
+import { doIf, tryCatch2, tryCatch2SyncFn } from '../../../e2ee-sync-library-rewrite/src/-utils';
 import type { ClientUpdate } from '../../../e2ee-sync-library-rewrite/src/-types';
 
 // Demo / brainstorm. will rewrite
@@ -177,13 +177,65 @@ async function createOnlineAndOfflineDoc<CRDTUpdate>(
 	params: {
 		docId: string;
 		onlineDocParams: Parameters<typeof createCrdtSyncProvider>[2];
+		useOfflineProvider: boolean;
+		// useOnlineProvider: boolean;
 	}
 ) {
 	// connect to local storage cache
 	const storageInterface = createLocalStorageInterface(params.docId);
 	createOfflineDocProvider(offlineDoc, storageInterface, localInterfaceUpdateEncoder); // will throw if no access to storage
-
 	createCrdtSyncProvider(onlineDoc, localInterfaceUpdateEncoder, params.onlineDocParams); // will throw if can't connect to server
+	// maybe I should rethink the failed to connect api
+
+	if (params.useOfflineProvider) {
+		const [offlineProvider, offlineError] = tryCatch2SyncFn(() =>
+			createOfflineDocProvider(offlineDoc, storageInterface, localInterfaceUpdateEncoder)
+		);
+		if (offlineError) {
+			throw offlineError; // maybe later handle this case, eg in case offline permission requires user permission grant
+		}
+	}
+
+	// assuming we always want to use onlineProvider for now
+
+	let status = 'connecting';
+	let onlineProvider: Awaited<ReturnType<typeof createCrdtSyncProvider>> | null;
+	let onlineError: Error | null;
+	[onlineProvider, onlineError] = await tryCatch2(
+		createCrdtSyncProvider(onlineDoc, localInterfaceUpdateEncoder, params.onlineDocParams)
+	);
+	if (onlineError) {
+		// assume the reason is we couldn't connect              // TODO: maybe rethink the failed to connect api, don't return that info by erroring
+		status = 'offline';
+	}
+
+	//@ts-ignore // TODO: implement this api, assuming we decide its the right one
+	onlineProvider.onConnectionLost(() => {
+		status = 'offline';
+		// offline doc is kept up to date with the last online doc state elsewhere
+
+		// TODO: cache the most recent doc state in "last online doc state"
+
+		// NOTE / TODO: when online provider loses connection, it currently may have a few updates applied to it that did not actually go through to the server. TODO: we need to handle this. maybe roll these back here?..
+		// onlineProvider.getNonOptimisticState or removeNonConfirmedUpdates? difficult.
+	});
+
+	function onReconnected() {
+		// reconnect onlineProvider
+		status = 'transition'; // todo online-and-offline mode
+
+		// for now just push offline state onto online. Later will add option to do custom merging logic, or online-and-offline mode to allow the user to be looped in for the merging (eg just display both side by side, or show one doc with highlighted diff of the other)
+		const autoComputedDiffUpdates = offlineDoc.getChangesNotAppliedToAnotherDoc(
+			onlineDoc.getSnapshot()
+		); // could instead add getsnapshot to the provider api, doesn't matter i think
+		onlineDoc.applyRemoteUpdates(autoComputedDiffUpdates);
+		// now will get auto merged up..., and we don't know when/whether it succeeded
+		// TODO handle above problem, as in what if we reconnect, try to merge in our offline state and then reconnect
+		// related to problem mentioned in onConnectionLost
+		// may also be solved for us if we solve above problem???
+	}
+
+	// TODO: keep offlineDoc in sync with online doc while in online mode
 }
 async function demo() {
 	const onlineDoc = createBaseYjsProvider(new Y.Doc());
@@ -191,6 +243,7 @@ async function demo() {
 
 	createOnlineAndOfflineDoc(onlineDoc, offlineDoc, yjsPUpdateEncoder(), {
 		docId: 'test-doc-id', // TODO: merge this and remoteDocId
+		useOfflineProvider: true,
 		onlineDocParams: {
 			remoteDocId: 'test-doc-id', // TODO: merge this and docId (ie rename this)
 			cryptoConfig: await getInsecureCryptoConfigForTesting(),

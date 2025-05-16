@@ -6,6 +6,7 @@ import {
     type CryptoConfig,
     getInsecureCryptoConfigForTesting,
 } from "./2-crypto-factory"
+import { tryCatch, tryCatch2 } from "./-utils"
 
 // ----
 
@@ -58,7 +59,10 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
         }
     )
     console.debug("created server interface")
-    await server.connect()
+    const { error: connectError } = await tryCatch(server.connect())
+    if (connectError) {
+        throw connectError
+    }
     console.debug("connected to server")
 
     // initialize local CRDT: hydrate it with server updates, and if mergeInitialState is true, merge the initial state into the local CRDT
