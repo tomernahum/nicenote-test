@@ -188,6 +188,7 @@ type YProviderUpdate = {
 }
 export function yjsPUpdateEncoder(): CRDTUpdateEncoder<YProviderUpdate> {
     return {
+        // encode
         encode: (providerUpdate: YProviderUpdate): LibraryUpdate => {
             // A simple encoding scheme: [type byte, ...operation bytes]
             // 0 for 'doc', 1 for 'awareness'
@@ -197,6 +198,8 @@ export function yjsPUpdateEncoder(): CRDTUpdateEncoder<YProviderUpdate> {
             encoded.set(providerUpdate.operation, 1)
             return encoded
         },
+
+        // decode binary update into one that the Y Provider Wrapper can understand
         decode: (update: LibraryUpdate): YProviderUpdate => {
             if (update.length === 0) {
                 console.warn("Tried to decode an empty library update")

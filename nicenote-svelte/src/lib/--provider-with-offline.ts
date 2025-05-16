@@ -5,7 +5,10 @@ import {
 	yjsPUpdateEncoder
 } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
 import { getInsecureCryptoConfigForTesting } from '../../../e2ee-sync-library-rewrite/src/2-crypto-factory';
-import { createCrdtSyncProvider } from '../../../e2ee-sync-library-rewrite/src/0-provider';
+import {
+	createCrdtSyncProvider,
+	type localCrdtInterface
+} from '../../../e2ee-sync-library-rewrite/src/0-provider';
 import { tryCatch2 } from '../../../e2ee-sync-library-rewrite/src/-utils';
 
 // Demo / brainstorm. will rewrite
@@ -74,25 +77,70 @@ async function startUpDoc(docId: string) {
 	}
 }
 
-let mode = 'online' as 'online' | 'offline';
+async function createDoc(docId: string) {
+	// start up offline doc
+}
 
-const onlineModeYDoc = createBaseYjsProvider(new Y.Doc());
-const remoteDocYBindingProvider = await createCrdtSyncProvider(
-	onlineModeYDoc,
-	yjsPUpdateEncoder(),
-	{
-		remoteDocId: DOC_ID,
-		cryptoConfig: await getInsecureCryptoConfigForTesting(),
-		mergeInitialState: true
-		// mergeInitialState: false
+type StorageEncoder<CRDTUpdate> = {
+	encodeStorage: (updates: CRDTUpdate[]) => string;
+	decodeStorage: (updates: string) => CRDTUpdate[];
+};
+
+// offline counterpart of createCrdtSyncProvider.   Actually maybe we could reuse it and replace the server interface. but WET
+function createOfflineDoc<CRDTUpdate>(
+	localCrdtInterface: localCrdtInterface<CRDTUpdate>, // maybe used to subscribe to updates?
+	storageEncoder: StorageEncoder<CRDTUpdate>,
+	params: {
+		docId: string;
+		//NOTE: initial state is always merged... you should probably all this with an empty initial state CRDT
 	}
-);
+) {
+	const storageInterface = ((docId: string) => ({
+		// Localstorage. Likely to be replaced with another storage system
 
-const offlineModeYDoc = createBaseYjsProvider(new Y.Doc());
-remoteDocYBindingProvider.on('lost connection', () => {
-	offlineModeYDoc.applyRemoteUpdates(onlineModeYDoc.getSnapshot());
-	mode = 'offline';
-});
-remoteDocYBindingProvider.on('reconnected', () => {
-	// merge in any updates that occurred while offline
-});
+		/** store the doc, overwriting any existing doc */
+		store: (state: CRDTUpdate[]) => {
+			const encoded = storageEncoder.encodeStorage(state);
+			localStorage.setItem(`doc-cache-${docId}`, encoded);
+		},
+
+		/** load doc (as CRDTUpdates). If there is no doc, return an empty array */ // should it indicate more clearly a difference instead?
+		load: () => {
+			const encoded = localStorage.getItem(`doc-cache-${docId}`);
+			if (!encoded) {
+				return [];
+			}
+			return storageEncoder.decodeStorage(encoded);
+		},
+
+		/** make sure storage interface is available */
+		connect: () => {
+			localStorage.setItem(`pinging-ls-121212`, 'ping');
+			if (localStorage.getItem(`pinging-ls-121212`) !== 'ping') {
+				throw new Error('Could not connect to localStorage');
+			}
+			localStorage.removeItem(`pinging-ls-121212`);
+			return;
+		}
+	}))(params.docId);
+
+	// connect / make sure its available. will throw otherwise
+	storageInterface.connect();
+
+	// load the doc from storage
+	const initialStoredDocUpdates = storageInterface.load();
+	localCrdtInterface.applyRemoteUpdates(initialStoredDocUpdates);
+
+	// merge the initial state into the local CRDT. always doing this because it will get merged later anyways
+	storageInterface.store(localCrdtInterface.getSnapshot());
+
+	// subscribe to local updates and save them to storage
+	localCrdtInterface.subscribeToLocalUpdates((update) => {
+		storageInterface.store(localCrdtInterface.getSnapshot());
+	});
+
+	// listen for updates to the storage that were not triggered by this instance
+	// TODO: can do polling, replace localstorage with dexie/similar, but what I really want is to (optionally?) back it with (one of) the filesystem apis, which I will look into later.
+
+	return {};
+}
