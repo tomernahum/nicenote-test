@@ -13,78 +13,15 @@ import {
 	type CRDTUpdateEncoder,
 	type localCrdtInterface
 } from '../../../e2ee-sync-library-rewrite/src/0-provider';
-import { doIf, tryCatch2, tryCatch2SyncFn } from '../../../e2ee-sync-library-rewrite/src/-utils';
+import {
+	assert,
+	doIf,
+	tryCatch2,
+	tryCatch2SyncFn
+} from '../../../e2ee-sync-library-rewrite/src/-utils';
 import type { ClientUpdate } from '../../../e2ee-sync-library-rewrite/src/-types';
 
 // Demo / brainstorm. will rewrite
-
-async function startUpDocBrainStorm(docId: string) {
-	const onlineModeDoc = createBaseYjsProvider(new Y.Doc());
-	const offlineModeDoc = createBaseYjsProvider(new Y.Doc());
-
-	function setupOfflineModeDoc() {
-		// // make sure offlineDocCache is subscribed to updates from the offline doc memory
-		// offlineModeDoc.subscribeToLocalUpdates((update) => {
-		// 	// cache the offline doc state
-		// 	localStorage.setItem(`doc-cache-${docId}`, JSON.stringify(offlineModeDoc.getSnapshot()));
-		// });
-	}
-
-	let mode = 'connecting';
-	const [remoteProvider, error] = await tryCatch2(
-		createCrdtSyncProvider(onlineModeDoc, yjsPUpdateEncoder(), {
-			remoteDocId: docId,
-			cryptoConfig: await getInsecureCryptoConfigForTesting(),
-			mergeInitialState: true
-		})
-	);
-	if (error) {
-		// start up in offline mode
-		mode = 'offline';
-		const cachedOfflineDoc = localStorage.getItem(`doc-cache-${docId}`);
-		if (!cachedOfflineDoc) {
-			// keep offline doc empty
-		} else {
-			// load the cached offline doc state into the in-memory offline doc
-			offlineModeDoc.applyRemoteUpdates(JSON.parse(cachedOfflineDoc));
-		}
-		// make sure offlineDocCache is subscribed to updates from the offline doc memory
-		offlineModeDoc.subscribeToLocalUpdates((update) => {
-			// cache the offline doc state
-			localStorage.setItem(`doc-cache-${docId}`, JSON.stringify(offlineModeDoc.getSnapshot()));
-		});
-	} else {
-		// start up in online mode
-		mode = 'online';
-
-		// onlineModeDoc is already connected.
-
-		// make sure offlineModeDoc kept in sync with the authoritative online doc
-		// could alternatively only copy it over when the connection is lost
-		onlineModeDoc.yDoc.on('update', (update) => {
-			Y.applyUpdate(offlineModeDoc.yDoc, update, 'online mode sync');
-			// this will trigger this code above:
-			// localStorage.setItem(`doc-cache-${docId}`, JSON.stringify(onlineModeDoc.getSnapshot()));
-		});
-
-		remoteProvider.on('lost connection', () => {
-			// time to go into offline mode
-			mode = 'offline';
-			// offline doc is already up to date with latest online doc
-
-			remoteProvider.on('reconnected', () => {
-				// go back into online mode, or go into online-and-offline mode to merge manually
-				mode = 'online-and-offline';
-
-				clearListeners;
-			});
-		});
-	}
-}
-
-async function createDoc(docId: string) {
-	// start up offline doc
-}
 
 type StorageInterface = {
 	/** store the doc, overwriting any existing doc */
@@ -142,7 +79,7 @@ function createLocalStorageInterface(docId: string) {
 }
 
 // offline counterpart of createCrdtSyncProvider.   Actually maybe we could reuse it and replace the server interface. but WET
-function createOfflineDocProvider<CRDTUpdate>(
+function createLSOfflineDocProvider<CRDTUpdate>(
 	localCrdtInterface: localCrdtInterface<CRDTUpdate>, // maybe used to subscribe to updates?
 	storageInterface: StorageInterface,
 	localCrdtUpdateEncoder: CRDTUpdateEncoder<CRDTUpdate>
@@ -177,26 +114,24 @@ async function createOnlineAndOfflineDoc<CRDTUpdate>(
 	params: {
 		docId: string;
 		onlineDocParams: Parameters<typeof createCrdtSyncProvider>[2];
-		useOfflineProvider: boolean;
+		// maybe:
+		// useOfflineProvider: boolean;
 		// useOnlineProvider: boolean;
 	}
 ) {
-	// connect to local storage cache
 	const storageInterface = createLocalStorageInterface(params.docId);
-	createOfflineDocProvider(offlineDoc, storageInterface, localInterfaceUpdateEncoder); // will throw if no access to storage
-	createCrdtSyncProvider(onlineDoc, localInterfaceUpdateEncoder, params.onlineDocParams); // will throw if can't connect to server
-	// maybe I should rethink the failed to connect api
 
-	if (params.useOfflineProvider) {
-		const [offlineProvider, offlineError] = tryCatch2SyncFn(() =>
-			createOfflineDocProvider(offlineDoc, storageInterface, localInterfaceUpdateEncoder)
-		);
-		if (offlineError) {
-			throw offlineError; // maybe later handle this case, eg in case offline permission requires user permission grant
-		}
-	}
+	//
 
-	// assuming we always want to use onlineProvider for now
+	// connect the offline doc to the offline provider / storage
+	const offlineProvider = createLSOfflineDocProvider(
+		offlineDoc,
+		storageInterface,
+		localInterfaceUpdateEncoder
+	); // will throw if no access to storage
+	// TODO maybe: param in this function to not use offline mode
+
+	// connect the online doc to the online provider / server
 
 	let status = 'connecting';
 	let onlineProvider: Awaited<ReturnType<typeof createCrdtSyncProvider>> | null;
@@ -205,7 +140,23 @@ async function createOnlineAndOfflineDoc<CRDTUpdate>(
 		createCrdtSyncProvider(onlineDoc, localInterfaceUpdateEncoder, params.onlineDocParams)
 	);
 	if (onlineError) {
-		// assume the reason is we couldn't connect              // TODO: maybe rethink the failed to connect api, don't return that info by erroring
+		// assume the reason is we couldn't connect
+		// TODO: maybe rethink the failed to connect api, don't return that info by erroring
+		// 		// maybe create first and then connect as a method?
+		status = 'offline';
+	} else {
+		status = 'online';
+	}
+
+	// In online mode, make the offline doc listen to the online provider
+	if (status === 'online') {
+		// TODO! support multiple subscriptions inside
+		onlineDoc.subscribeToLocalUpdates((update) => {
+			offlineDoc.applyRemoteUpdates([update]);
+		});
+	}
+
+	function onConnectionLost() {
 		status = 'offline';
 	}
 
@@ -251,3 +202,7 @@ async function demo() {
 		}
 	});
 }
+
+// async function createOnlineAndOfflineDocNew<CRDTUpdate>(
+// 	onlin
+// ) {}

@@ -69,3 +69,11 @@ export function doIf<T>(condition: boolean, fn: () => T) {
         return fn()
     } else return undefined
 }
+
+export function assert(condition: boolean, message?: string) {
+    if (!condition) {
+        throw new Error(`Assertion failed: ${message || ""}`)
+    }
+}
+
+export function asser
