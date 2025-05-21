@@ -13,7 +13,9 @@ import { tryCatch, tryCatch2 } from "./-utils"
 // TYPES USED
 export type localCrdtInterface<CRDTUpdate> = {
     applyRemoteUpdates: (updates: CRDTUpdate[]) => void
-    subscribeToLocalUpdates: (callback: (update: CRDTUpdate) => void) => void
+    subscribeToLocalUpdates: (
+        callback: (update: CRDTUpdate) => void
+    ) => () => void
 
     getChangesNotAppliedToAnotherDoc: (
         remoteDocChanges: CRDTUpdate[]

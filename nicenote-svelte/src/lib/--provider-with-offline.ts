@@ -150,7 +150,7 @@ async function createOnlineAndOfflineDoc<CRDTUpdate>(
 		status.set('online');
 	}
 
-	status.whenValueIs('online', {
+	status.whileValueIs('online', {
 		onStart: () => {
 			// the offline doc should sync with the online doc exactly....
 			//
@@ -222,13 +222,13 @@ async function demo() {
 async function createOnlineAndOfflineDocNew<CRDTUpdate>(
 	doc: localCrdtInterface<CRDTUpdate>,
 	localInterfaceUpdateEncoder: CRDTUpdateEncoder<CRDTUpdate>,
-	storageInterface: StorageInterface,
+	storage: StorageInterface,
 	params: {
 		onlineDocParams: Parameters<typeof createCrdtSyncProvider>[2];
 	}
 ) {
 	// verify the local storage interface is available
-	storageInterface.connect(); // will throw if can't connect to local storage
+	storage.connect(); // will throw if can't connect to local storage
 
 	let status = createObservable<'connecting' | 'online' | 'offline'>('connecting');
 
@@ -248,24 +248,19 @@ async function createOnlineAndOfflineDocNew<CRDTUpdate>(
 		status.set('online');
 	}
 
-	status.whenValueIs('online', {
-		onStart: () => {
-			return;
-		},
-		onStop: () => {
-			// let the
-
-			return;
+	status.whileValueIs('online', () => {
+		// keep the storage cache in sync with the doc
+		function storeDoc() {
+			storage.store(doc.getSnapshot().map(localInterfaceUpdateEncoder.encode));
 		}
-	});
 
-	status.whenValueIs('offline', {
-		onStart: () => {
-			return;
-		},
-		onStop: () => {
-			return;
-		}
+		storeDoc();
+		const unsubStorage = doc.subscribeToLocalUpdates(storeDoc);
+
+		// return function runs when val stops being it
+		return function cleanup(newValueItBecame) {
+			unsubStorage();
+		};
 	});
 
 	//

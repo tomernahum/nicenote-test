@@ -13,7 +13,7 @@ export function createObservable<T>(initialValue: T) {
         onValueBecomes,
         onValueChangesFrom,
 
-        whenValueIs,
+        whileValueIs,
 
         get value() {
             return value
@@ -64,24 +64,35 @@ export function createObservable<T>(initialValue: T) {
         return subscribe(internalCallback)
     }
 
-    function whenValueIs(
-        valueItIs: T,
-        params: {
-            onStart: (newValue: T) => void
-            onStop: (newValueItBecame: T) => void
-        }
+    /**
+     * Registers a callback that runs when the value becomes a specific value, or runs immediately if the value is already the target value
+     * the function returned by that callback is run when the value stops being the specific value
+     */
+    function whileValueIs(
+        targetValue: T,
+        callback: () => (newValueItBecame: T) => void
     ) {
-        if (value === valueItIs) {
-            params.onStart(value)
+        function handleEntry() {
+            const cleanUpFunc = callback()
+
+            const removeCleanUpListener = onValueChangesFrom(
+                targetValue,
+                (newValueItBecame) => {
+                    cleanUpFunc(newValueItBecame)
+                    removeCleanUpListener() // this should work...  makes this run once.
+                }
+            )
         }
 
-        const removeStart = onValueBecomes(valueItIs, params.onStart)
-        const removeStop = onValueChangesFrom(valueItIs, params.onStop)
-
-        return () => {
-            removeStart()
-            removeStop()
+        // if we are already the target value
+        if (value === targetValue) {
+            handleEntry()
         }
+
+        // register callback
+        const removeStart = onValueBecomes(targetValue, handleEntry)
+
+        return removeStart
     }
 }
 
