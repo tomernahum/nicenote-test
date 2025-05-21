@@ -20,6 +20,7 @@ import {
 	tryCatch2SyncFn
 } from '../../../e2ee-sync-library-rewrite/src/-utils';
 import type { ClientUpdate } from '../../../e2ee-sync-library-rewrite/src/-types';
+import { createObservable } from '../../../e2ee-sync-library-rewrite/src/ts-helper-lib';
 
 // Demo / brainstorm. will rewrite
 
@@ -133,7 +134,8 @@ async function createOnlineAndOfflineDoc<CRDTUpdate>(
 
 	// connect the online doc to the online provider / server
 
-	let status = 'connecting';
+	let status = createObservable<'connecting' | 'online' | 'offline'>('connecting');
+
 	let onlineProvider: Awaited<ReturnType<typeof createCrdtSyncProvider>> | null;
 	let onlineError: Error | null;
 	[onlineProvider, onlineError] = await tryCatch2(
@@ -143,13 +145,27 @@ async function createOnlineAndOfflineDoc<CRDTUpdate>(
 		// assume the reason is we couldn't connect
 		// TODO: maybe rethink the failed to connect api, don't return that info by erroring
 		// 		// maybe create first and then connect as a method?
-		status = 'offline';
+		status.set('offline');
 	} else {
-		status = 'online';
+		status.set('online');
 	}
 
+	status.whenValueIs('online', {
+		onStart: () => {
+			// the offline doc should sync with the online doc exactly....
+			//
+
+			return;
+		},
+		onStop: () => {
+			// let the
+
+			return;
+		}
+	});
+
 	// In online mode, make the offline doc listen to the online provider
-	if (status === 'online') {
+	if (status.value === 'online') {
 		// TODO! support multiple subscriptions inside
 		onlineDoc.subscribeToLocalUpdates((update) => {
 			offlineDoc.applyRemoteUpdates([update]);
@@ -203,6 +219,54 @@ async function demo() {
 	});
 }
 
-// async function createOnlineAndOfflineDocNew<CRDTUpdate>(
-// 	onlin
-// ) {}
+async function createOnlineAndOfflineDocNew<CRDTUpdate>(
+	doc: localCrdtInterface<CRDTUpdate>,
+	localInterfaceUpdateEncoder: CRDTUpdateEncoder<CRDTUpdate>,
+	storageInterface: StorageInterface,
+	params: {
+		onlineDocParams: Parameters<typeof createCrdtSyncProvider>[2];
+	}
+) {
+	// verify the local storage interface is available
+	storageInterface.connect(); // will throw if can't connect to local storage
+
+	let status = createObservable<'connecting' | 'online' | 'offline'>('connecting');
+
+	// try to connect to the online provider
+	let onlineProvider: Awaited<ReturnType<typeof createCrdtSyncProvider>> | undefined;
+
+	const [onlineProviderResult, onlineError] = await tryCatch2(
+		createCrdtSyncProvider(doc, localInterfaceUpdateEncoder, params.onlineDocParams)
+	);
+	if (onlineError) {
+		// assume the reason is we couldn't connect
+		// TODO: maybe rethink the failed to connect api, don't return that info by erroring
+		status.set('offline');
+	} else {
+		// successfully connected to the online provider and the server
+		onlineProvider = onlineProviderResult;
+		status.set('online');
+	}
+
+	status.whenValueIs('online', {
+		onStart: () => {
+			return;
+		},
+		onStop: () => {
+			// let the
+
+			return;
+		}
+	});
+
+	status.whenValueIs('offline', {
+		onStart: () => {
+			return;
+		},
+		onStop: () => {
+			return;
+		}
+	});
+
+	//
+}

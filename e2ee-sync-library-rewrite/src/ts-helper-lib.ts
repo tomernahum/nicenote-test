@@ -1,14 +1,19 @@
 // basically utils
 
-function createObservable<T>(initialValue: T) {
+export function createObservable<T>(initialValue: T) {
     let value = initialValue
-    const subscribers = new Set<(newValue: T) => void>()
+    const subscribers = new Set<(newValue: T, oldValue: T) => void>()
 
     return {
-        getVal,
-        setVal,
-        updateVal,
+        get: getVal,
+        set: setVal,
         subscribe,
+        onChange: subscribe,
+
+        onValueBecomes,
+        onValueChangesFrom,
+
+        whenValueIs,
 
         get value() {
             return value
@@ -21,17 +26,61 @@ function createObservable<T>(initialValue: T) {
         return value
     }
     function setVal(newValue: T) {
+        const oldValue = value
         value = newValue
-        subscribers.forEach((callback) => callback(newValue))
+        subscribers.forEach((callback) => callback(newValue, oldValue))
     }
-    function updateVal(fn: (oldValue: T) => T) {
-        setVal(fn(value))
-    }
+    // function updateVal(fn: (oldValue: T) => T) {
+    //     setVal(fn(value))
+    // }
 
-    function subscribe(callback: (newValue: T) => void) {
+    function subscribe(callback: (newValue: T, oldValue: T) => void) {
         subscribers.add(callback)
         return () => {
             subscribers.delete(callback)
+        }
+    }
+
+    function onValueBecomes(
+        valueItBecomes: T,
+        callback: (oldValue: T) => void
+    ) {
+        const internalCallback = (newValue: T, oldValue: T) => {
+            if (newValue === valueItBecomes) {
+                callback(oldValue)
+            }
+        }
+        return subscribe(internalCallback)
+    }
+    function onValueChangesFrom(
+        valueItChangesFrom: T,
+        callback: (newValue: T) => void
+    ) {
+        const internalCallback = (newValue: T, oldValue: T) => {
+            if (oldValue === valueItChangesFrom) {
+                callback(newValue)
+            }
+        }
+        return subscribe(internalCallback)
+    }
+
+    function whenValueIs(
+        valueItIs: T,
+        params: {
+            onStart: (newValue: T) => void
+            onStop: (newValueItBecame: T) => void
+        }
+    ) {
+        if (value === valueItIs) {
+            params.onStart(value)
+        }
+
+        const removeStart = onValueBecomes(valueItIs, params.onStart)
+        const removeStop = onValueChangesFrom(valueItIs, params.onStop)
+
+        return () => {
+            removeStart()
+            removeStop()
         }
     }
 }
@@ -41,7 +90,7 @@ function createObservable<T>(initialValue: T) {
  * You can return from your object the on function to support event listeners on your object
  * and internally to your object, use emit to emit events
  */
-function createEventsHelper<
+export function createEventsHelper<
     Event extends {
         [key: string]: any
     }
