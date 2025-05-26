@@ -21,9 +21,12 @@ type SealedMessage = Uint8Array
 Steps:
 encoding multiple messages into one
 padding
-encryption
+
 signing
+encryption
 versioning
+
+Sign the plaintext, not the ciphertext, so that the signature data is authenticated data by the aes-gcm encryption
 */
 
 export type CryptoConfig = PaddingConfig &
@@ -50,9 +53,10 @@ export async function clientMessagesToSealedMessage(
     }
     const encoded = encodeMultipleUpdatesAsOne(c, clientMessages)
     const padded = padData(c, encoded)
-    const encrypted = await encrypt(c, padded)
-    const signed = await sign(c, encrypted)
-    const versioned = addVersion(c, signed) // v0
+
+    const signed = await sign(c, padded)
+    const encrypted = await encrypt(c, signed)
+    const versioned = addVersion(c, encrypted) // v0
 
     return versioned
 }
@@ -71,9 +75,9 @@ export async function sealedMessageToClientMessages(
     )
     // if we ever support multiple versions, branch off here based on version
 
-    const deSigned = await verifyAndStripOffSignature(c, deVersioned)
-    const decrypted = await decrypt(c, deSigned)
-    const unPadded = unPadData(c, decrypted)
+    const decrypted = await decrypt(c, deVersioned)
+    const deSigned = await verifyAndStripOffSignature(c, decrypted)
+    const unPadded = unPadData(c, deSigned)
     const decoded = decodeMultiUpdate(c, unPadded)
 
     return decoded

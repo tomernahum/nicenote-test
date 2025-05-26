@@ -1,4 +1,4 @@
-import { decodeList, encodeList } from "./encodingList"
+import { decodeList, encodeList } from "./1-encodingList"
 
 export type VersionConfig = {
     schemaVersion: string

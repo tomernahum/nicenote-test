@@ -3,7 +3,7 @@
 	// import { createSyncedYDocProviderDemo } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
 	import { createYjsSyncProvider } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
 
-	import { getInsecureCryptoConfigForTesting } from '../../../e2ee-sync-library-rewrite/src/2-crypto-factory';
+	import { getUnsafeTestingEncryptionKey } from '../../../e2ee-sync-library-rewrite/src/2-crypto-factory';
 	import Quill from 'quill';
 	import QuillCursors from 'quill-cursors';
 	import * as Y from 'yjs';
@@ -78,7 +78,7 @@
 		// });
 		const remoteDocYBindingProvider = await createYjsSyncProvider(yDoc, {
 			remoteDocId,
-			cryptoConfig: await getInsecureCryptoConfigForTesting(),
+			cryptoConfig: await getUnsafeTestingEncryptionKey(),
 			mergeInitialState: true
 			// mergeInitialState: false
 		});
@@ -111,60 +111,60 @@
 		};
 	}
 
-	async function createFastLoadingCollaborativeQuillEditor(params: {
-		domElement: HTMLElement | string;
-		remoteDocId: string;
-	}) {
-		const { domElement, remoteDocId } = params;
-		const realDomElement =
-			domElement instanceof HTMLElement ? domElement : document.querySelector(domElement)!;
-		const quillWrapperElem = document.createElement('div');
-		quillWrapperElem.style.overflow = 'visible';
-		realDomElement.appendChild(quillWrapperElem);
+	// async function createFastLoadingCollaborativeQuillEditor(params: {
+	// 	domElement: HTMLElement | string;
+	// 	remoteDocId: string;
+	// }) {
+	// 	const { domElement, remoteDocId } = params;
+	// 	const realDomElement =
+	// 		domElement instanceof HTMLElement ? domElement : document.querySelector(domElement)!;
+	// 	const quillWrapperElem = document.createElement('div');
+	// 	quillWrapperElem.style.overflow = 'visible';
+	// 	realDomElement.appendChild(quillWrapperElem);
 
-		const yDoc = new Y.Doc();
-		const yType = yDoc.getText('quill');
+	// 	const yDoc = new Y.Doc();
+	// 	const yType = yDoc.getText('quill');
 
-		const quillEditor = initializeQuillEditor(quillWrapperElem);
-		let quillBinding: QuillBinding;
+	// 	const quillEditor = initializeQuillEditor(quillWrapperElem);
+	// 	let quillBinding: QuillBinding;
 
-		async function connectToOnline() {
-			const remoteDocYBindingProvider = await createYjsSyncProvider(yDoc, {
-				remoteDocId,
-				cryptoConfig: await getInsecureCryptoConfigForTesting(),
-				mergeInitialState: true
-			});
+	// 	async function connectToOnline() {
+	// 		const remoteDocYBindingProvider = await createYjsSyncProvider(yDoc, {
+	// 			remoteDocId,
+	// 			cryptoConfig: await getUnsafeTestingEncryptionKey(),
+	// 			mergeInitialState: true
+	// 		});
 
-			// Specify awareness information for local user to integrate with quill-cursors
-			remoteDocYBindingProvider.awareness.setLocalStateField('user', {
-				name: `anonymous ${getRandomAnimal()}`,
-				color: getRandomColor()
-			});
+	// 		// Specify awareness information for local user to integrate with quill-cursors
+	// 		remoteDocYBindingProvider.awareness.setLocalStateField('user', {
+	// 			name: `anonymous ${getRandomAnimal()}`,
+	// 			color: getRandomColor()
+	// 		});
 
-			quillBinding = new QuillBinding(yType, quillEditor, remoteDocYBindingProvider.awareness);
+	// 		quillBinding = new QuillBinding(yType, quillEditor, remoteDocYBindingProvider.awareness);
 
-			return remoteDocYBindingProvider;
-		}
-		const remoteDocYBindingProvider = connectToOnline();
+	// 		return remoteDocYBindingProvider;
+	// 	}
+	// 	const remoteDocYBindingProvider = connectToOnline();
 
-		async function deleteEditor() {
-			await (await remoteDocYBindingProvider).disconnect();
-			yDoc.destroy();
+	// 	async function deleteEditor() {
+	// 		await (await remoteDocYBindingProvider).disconnect();
+	// 		yDoc.destroy();
 
-			// remove the dom element. Needs to be parent of the quillEditor container because the quill toolbars module is added next to the main quillEditor container
-			// const realElement = domElement instanceof HTMLElement ? domElement : document.querySelector(domElement)
-			const quillWrapperElem = quillEditor.container.parentElement;
-			quillWrapperElem?.remove();
-		}
-		return {
-			yDoc,
-			yType,
-			quillEditor,
-			quillBinding: () => quillBinding,
-			yBindingProvider: remoteDocYBindingProvider,
-			deleteEditor
-		};
-	}
+	// 		// remove the dom element. Needs to be parent of the quillEditor container because the quill toolbars module is added next to the main quillEditor container
+	// 		// const realElement = domElement instanceof HTMLElement ? domElement : document.querySelector(domElement)
+	// 		const quillWrapperElem = quillEditor.container.parentElement;
+	// 		quillWrapperElem?.remove();
+	// 	}
+	// 	return {
+	// 		yDoc,
+	// 		yType,
+	// 		quillEditor,
+	// 		quillBinding: () => quillBinding,
+	// 		yBindingProvider: remoteDocYBindingProvider,
+	// 		deleteEditor
+	// 	};
+	// }
 
 	let noteElem: HTMLDivElement; // defaults to undefined
 
