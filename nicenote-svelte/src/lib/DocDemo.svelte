@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createSyncedYDocProviderDemo } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
+	// import { createSyncedYDocProviderDemo } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
 	import { createYjsSyncProvider } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
 
 	import { getInsecureCryptoConfigForTesting } from '../../../e2ee-sync-library-rewrite/src/2-crypto-factory';
@@ -189,6 +189,7 @@
 	//NOTE / TODO maybe this isn't ideal: on mount we reconnect to the doc, including downloading all it's history, and onUnMount we disconnect entirely. so if it rerenders we refetch the history. probably would rather keep it around locally even if the component is unmounted. hopefully we can do this without adapting the api
 </script>
 
+<p>DocDemo</p>
 <div bind:this={noteElem} id="note" style="overflow: visible;"></div>
 
 <style>

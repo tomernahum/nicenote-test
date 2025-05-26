@@ -263,5 +263,9 @@ async function createOnlineAndOfflineDocNew<CRDTUpdate>(
 		};
 	});
 
+	status.whileValueIs('offline', () => {
+		return () => {};
+	});
+
 	//
 }

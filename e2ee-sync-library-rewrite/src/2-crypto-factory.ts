@@ -33,7 +33,7 @@ writes will probably be done on top of already-encrypted data, though I will loo
 */
 const DEFAULT_ENCRYPTION_CONFIG_VALUES = {
     paddingLengthCheckpoints: [256, 2048, 16_384, 65_536, 262144],
-}
+} 
 const ADDITIONAL_CONFIG_VALUES = {
     // Note that versions are currently read by reading the first expectedVersion.length bytes of the encoded update message.
     // Meaning a newer version with > 4 length will be detected by current code as whatever the first 4 chars are.
@@ -78,7 +78,7 @@ export function createCryptoFactory(cryptoConfig: CryptoConfig) {
         const padded = padding.padData(encoded)
         const encrypted = await encryption.encrypt(padded)
         // Todo, signed
-        const versioned = versioning.addVersion(encrypted)
+        const versioned = versioning.addVersion(encrypted) // v0
 
         return versioned
     }

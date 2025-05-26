@@ -41,6 +41,13 @@ export function createObservable<T>(initialValue: T) {
         }
     }
 
+    function onceChange(callback: (newValue: T, oldValue: T) => void) {
+        const unsub = subscribe((newValue, oldValue) => {
+            unsub()
+            callback(newValue, oldValue)
+        })
+    }
+
     function onValueBecomes(
         valueItBecomes: T,
         callback: (oldValue: T) => void

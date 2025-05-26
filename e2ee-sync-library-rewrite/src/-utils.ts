@@ -76,4 +76,3 @@ export function assert(condition: boolean, message?: string) {
     }
 }
 
-export function asser
