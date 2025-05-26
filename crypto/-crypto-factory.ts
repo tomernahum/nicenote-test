@@ -5,19 +5,14 @@ import {
     PaddingConfig,
     unPadData,
 } from "./2-padding"
+import { decrypt, encrypt, EncryptionConfig } from "./3-encrypting"
+import { sign, SigningConfig, verifyAndStripOffSignature } from "./4-signing"
 import {
-    decrypt,
-    DEFAULT_ENCRYPTION_CONFIG_VALUES,
-    encrypt,
-    EncryptionConfig,
-} from "./3-encrypting"
-import {
-    DEFAULT_SIGNING_CONFIG_VALUES,
-    sign,
-    SigningConfig,
-    verifyAndStripOffSignature,
-} from "./4-signing"
-import { addVersion, stripOffVersionAndConfirmItIsValid } from "./5-versioning"
+    addVersion,
+    stripOffVersionAndConfirmItIsValid,
+    DEFAULT_VERSION_CONFIG,
+    VersionConfig,
+} from "./5-versioning"
 
 type ClientMessage = Uint8Array
 type SealedMessage = Uint8Array
@@ -31,16 +26,20 @@ signing
 versioning
 */
 
-export type CryptoConfig = PaddingConfig & EncryptionConfig & SigningConfig // includes optional properties
+export type CryptoConfig = PaddingConfig &
+    EncryptionConfig &
+    SigningConfig &
+    VersionConfig // includes optional properties
 
 const DEFAULT_CRYPTO_CONFIG_VALUES = {
     ...DEFAULT_PADDING_CONFIG_VALUES,
-    ...DEFAULT_ENCRYPTION_CONFIG_VALUES,
-    ...DEFAULT_SIGNING_CONFIG_VALUES,
+    // can add default values from the other modules if they need any
+    ...DEFAULT_VERSION_CONFIG,
 }
 
 type RealConfig = CryptoConfig & typeof DEFAULT_CRYPTO_CONFIG_VALUES
 
+/** Do not call >4 billion times with the same encryption key (across any device) */
 export async function clientMessagesToSealedMessage(
     config: CryptoConfig,
     clientMessages: ClientMessage[]
@@ -80,7 +79,12 @@ export async function sealedMessageToClientMessages(
     return decoded
 }
 
-/** Can also just call above functions directly, but this is for if you want a more oop thing to call that can remember config */
+/** Can also just call above functions directly, but this is for if you want a more oop thing to call that can remember config
+ *
+ * Meant to be used with a separate key rotation system too provide PCS, maybe FS
+ * Do not seal messages >2^32 (4 billion) times with the same encryption key (across any device), or the encryption breaks
+ * Do not use more than 2^48 (281 trillion) encryption keys total, apparently
+ */
 export function createCryptoFactory(config: CryptoConfig) {
     let c: RealConfig = {
         ...DEFAULT_CRYPTO_CONFIG_VALUES,
