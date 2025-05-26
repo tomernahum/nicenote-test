@@ -11,5 +11,6 @@
         // https://raw.githubusercontent.com/material-extensions/vscode-material-icon-theme/main/images/folderIcons.png
         "e2ee-sync-library": "Interface",
         "nicenote-svelte": "App"
-    }
+    },
+    "editor.formatOnSave": true
 }
