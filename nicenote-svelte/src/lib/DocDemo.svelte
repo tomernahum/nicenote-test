@@ -201,9 +201,10 @@
 <button
 	on:click={async () => {
 		editor.yBindingProvider.changeCryptoConfig(async (cryptoConfig) => {
-			console.log('Started using bad signing key');
+			console.log('Started using bad signing key', { prevConfig: cryptoConfig });
 			return {
 				...cryptoConfig,
+				signingMode: 'skip'
 				signingKey: (await generateSigningKeyPair()).privateKey
 				// encryptionKey: await generateSymmetricEncryptionKey()
 			};

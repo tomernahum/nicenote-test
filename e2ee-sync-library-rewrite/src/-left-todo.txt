@@ -3,6 +3,7 @@
 - areAllLocalUpdatesSyncedUpToServer, areRecentUpdatesFailedToSendToServer  (to show in ui if your changes are saved)
     - maybe more granular too
 
+- make sure invalid messages are skipped, not resulting in error on everything
 
 
 
