@@ -5,7 +5,7 @@ export const DEFAULT_PADDING_CONFIG_VALUES = {
     paddingLengthCheckpoints: [256, 2048, 16_384, 65_536, 262144],
 }
 
-type Config = PaddingConfig & typeof DEFAULT_PADDING_CONFIG_VALUES
+type Config = typeof DEFAULT_PADDING_CONFIG_VALUES & PaddingConfig
 
 export function padData(config: Config, data: Uint8Array) {
     const dataLength = data.byteLength

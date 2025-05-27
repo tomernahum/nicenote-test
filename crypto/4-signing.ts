@@ -8,15 +8,23 @@ export type SigningConfig =
     | {
           signingMode: "reader"
           mainVerifyingKey: SignatureKey
-          validOldVerifyingKeys: SignatureKey[]
+          validOldVerifyingKeys?: SignatureKey[]
       }
     | {
           signingMode: "writer"
+
           mainVerifyingKey: SignatureKey
-          validOldVerifyingKeys: SignatureKey[]
+          validOldVerifyingKeys?: SignatureKey[]
+
           mainSigningKey: SignatureKey // (signing key = secret/private key)
-          validOldSigningKeys: SignatureKey[]
+          validOldSigningKeys?: SignatureKey[]
       }
+export const DEFAULT_SIGNING_CONFIG_VALUES = {
+    validOldVerifyingKeys: [] as SignatureKey[],
+    validOldSigningKeys: [] as SignatureKey[],
+} // these are included every time since they are default, but they will not be used if not appropriate to do so
+
+type Config = typeof DEFAULT_SIGNING_CONFIG_VALUES & SigningConfig
 
 export async function generateSigningKeyPair() {
     const { publicKey, privateKey } = await crypto.subtle.generateKey(
@@ -59,7 +67,7 @@ export async function getUnsafeTestingSigningKeypair() {
     return { privateKey, publicKey }
 }
 
-export async function sign(config: SigningConfig, outgoingData: Uint8Array) {
+export async function sign(config: Config, outgoingData: Uint8Array) {
     if (config.signingMode === "skip") {
         // throw new Error("Cannot sign data in skip mode")
         return outgoingData
@@ -81,7 +89,7 @@ export async function sign(config: SigningConfig, outgoingData: Uint8Array) {
     return out
 }
 export async function verifyAndStripOffSignature(
-    config: SigningConfig,
+    config: Config,
     incomingData: Uint8Array
 ) {
     if (config.signingMode === "skip") {
@@ -93,17 +101,41 @@ export async function verifyAndStripOffSignature(
         throw new Error("Invalid data")
     }
 
-    const verificationResult = await crypto.subtle.verify(
-        {
-            name: "Ed25519",
-        },
-        config.mainVerifyingKey,
-        signature,
-        message
-    )
+    // try verifying with main key
+    try {
+        const verificationResult = await crypto.subtle.verify(
+            {
+                name: "Ed25519",
+            },
+            config.mainVerifyingKey,
+            signature,
+            message
+        )
 
-    if (!verificationResult) {
-        throw new Error("Signature verification failed")
+        if (!verificationResult) {
+            throw new Error("Signature verification failed")
+        }
+
+        return message
+    } catch {}
+    // try with old keys
+    for (const key of config.validOldVerifyingKeys) {
+        try {
+            const verificationResult = await crypto.subtle.verify(
+                {
+                    name: "Ed25519",
+                },
+                key,
+                signature,
+                message
+            )
+
+            if (!verificationResult) {
+                throw new Error("Signature verification failed")
+            }
+            return message
+        } catch {}
     }
-    return message
+
+    throw new Error("Signature verification failed")
 }

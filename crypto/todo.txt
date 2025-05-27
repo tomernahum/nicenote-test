@@ -9,5 +9,8 @@
 - make a design doc
 - run above 2 by crypto expert
 
-- signing: support old keys
 
+
+-----
+- signing: support old keys
+- probably make config defaultation local to each file for easier readability

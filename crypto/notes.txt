@@ -5,7 +5,9 @@ Code Structure Notes:
 
 
 Notes: 
-- we are opinionatedly selecting algorithms from the web crypto api, and combining them into a crypto system designed for our use case, which is encrypted documents made of message lists, with consumers of the roles of readers and read-writers`.
+- we are opinionatedly selecting algorithms from the web crypto api, and combining them into a crypto system designed for our use case, the system is (currently) sign-then-encrypt.
+- our use case is encrypted documents made up of message lists, with consumers that are either readers or read-and-write-ers.
+- this directly integrates with e2ee-sync-library folder. If the api of this stays the same for long enough it will become its own project / published separately
 - this is only a part of the overall crypto system, the key agreement and key management will be a separate library. The storing and relaying of messages is also a separate library.
 - I am not a crypto expert, so it is very likely I may have screwed something up security-wise (it can get very subtle). I try my best to model this, get it reviewed by crypto experts, If you see an issue please contact me (github issues is good!). If I make money off of an app that uses this, I will set up a bug bounty budget and pay for audits
 - similarish more established libraries: - libsodium.js 

@@ -5,8 +5,18 @@ import {
     PaddingConfig,
     unPadData,
 } from "./2-padding"
-import { decrypt, encrypt, EncryptionConfig } from "./3-encrypting"
-import { sign, SigningConfig, verifyAndStripOffSignature } from "./4-signing"
+import {
+    decrypt,
+    DEFAULT_ENCRYPTION_CONFIG_VALUES,
+    encrypt,
+    EncryptionConfig,
+} from "./3-encrypting"
+import {
+    DEFAULT_SIGNING_CONFIG_VALUES,
+    sign,
+    SigningConfig,
+    verifyAndStripOffSignature,
+} from "./4-signing"
 import {
     addVersion,
     stripOffVersionAndConfirmItIsValid,
@@ -37,10 +47,12 @@ export type CryptoConfig = PaddingConfig &
 const DEFAULT_CRYPTO_CONFIG_VALUES = {
     ...DEFAULT_PADDING_CONFIG_VALUES,
     // can add default values from the other modules if they need any
+    ...DEFAULT_ENCRYPTION_CONFIG_VALUES,
+    ...DEFAULT_SIGNING_CONFIG_VALUES,
     ...DEFAULT_VERSION_CONFIG,
 }
 
-type RealConfig = CryptoConfig & typeof DEFAULT_CRYPTO_CONFIG_VALUES
+type RealConfig = typeof DEFAULT_CRYPTO_CONFIG_VALUES & CryptoConfig
 
 /** Do not call >4 billion times with the same encryption key (across any device) */
 export async function clientMessagesToSealedMessage(

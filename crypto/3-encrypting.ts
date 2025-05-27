@@ -80,13 +80,18 @@ async function decryptData(key: CryptoKey, encrypted: Uint8Array) {
 }
 
 // -- For our crypto chain: --
-
+type EncryptionKey = CryptoKey
 export type EncryptionConfig = {
-    mainEncryptionKey: CryptoKey
-    validOldEncryptionKeys: CryptoKey[]
+    mainEncryptionKey: EncryptionKey
+    validOldEncryptionKeys?: EncryptionKey[]
+}
+export const DEFAULT_ENCRYPTION_CONFIG_VALUES = {
+    validOldEncryptionKeys: [] as EncryptionKey[],
 }
 
-export async function encrypt(config: EncryptionConfig, data: Uint8Array) {
+type Config = typeof DEFAULT_ENCRYPTION_CONFIG_VALUES & EncryptionConfig
+
+export async function encrypt(config: Config, data: Uint8Array) {
     return await encryptData(config.mainEncryptionKey, data)
 }
 
@@ -94,10 +99,7 @@ export async function encrypt(config: EncryptionConfig, data: Uint8Array) {
  * attempts to decrypt the data with each of the valid encryption keys in the config
  * (won't get false decryptions since aes-gcm encryption is authenticated)
  */
-export async function decrypt(
-    config: EncryptionConfig,
-    encryptedData: Uint8Array
-) {
+export async function decrypt(config: Config, encryptedData: Uint8Array) {
     // first try with main key
     try {
         return await decryptData(config.mainEncryptionKey, encryptedData)
