@@ -3,7 +3,8 @@
 	// import { createSyncedYDocProviderDemo } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
 	import { createYjsSyncProvider } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
 
-	import { getUnsafeTestingEncryptionKey } from '../../../e2ee-sync-library-rewrite/src/2-crypto-factory';
+	// import { getUnsafeTestingEncryptionKey } from '../../../e2ee-sync-library-rewrite/src/2-crypto-factory';
+	import { getUnsafeTestingCryptoConfig } from '../../../crypto/index';
 	import Quill from 'quill';
 	import QuillCursors from 'quill-cursors';
 	import * as Y from 'yjs';
@@ -78,7 +79,7 @@
 		// });
 		const remoteDocYBindingProvider = await createYjsSyncProvider(yDoc, {
 			remoteDocId,
-			cryptoConfig: await getUnsafeTestingEncryptionKey(),
+			cryptoConfig: await getUnsafeTestingCryptoConfig(),
 			mergeInitialState: true
 			// mergeInitialState: false
 		});

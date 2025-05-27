@@ -1,7 +1,8 @@
 import { CryptoConfig } from "./-crypto-factory"
 import { getUnsafeTestingEncryptionKey } from "./3-encrypting"
 import { getUnsafeTestingSigningKeypair } from "./4-signing"
-export { createCryptoFactory, CryptoConfig } from "./-crypto-factory"
+export { createCryptoFactory } from "./-crypto-factory"
+// exporting CryptoConfig type is causing problems
 
 export { generateSymmetricEncryptionKey } from "./3-encrypting"
 export { getUnsafeTestingEncryptionKey } from "./3-encrypting"
@@ -10,9 +11,13 @@ export { getUnsafeTestingSigningKeypair } from "./4-signing"
 //
 
 export async function getUnsafeTestingCryptoConfig(): Promise<CryptoConfig> {
+    const { privateKey, publicKey } = await getUnsafeTestingSigningKeypair()
     return {
         mainEncryptionKey: await getUnsafeTestingEncryptionKey(),
-        mainSigningKey: (await getUnsafeTestingSigningKeypair()).privateKey,
+
+        signingMode: "writer",
+        mainSigningKey: privateKey,
+        mainVerifyingKey: publicKey,
     }
 }
 

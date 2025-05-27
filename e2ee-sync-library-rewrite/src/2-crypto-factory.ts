@@ -1,5 +1,7 @@
 export {
     createCryptoFactory,
-    CryptoConfig,
     getUnsafeTestingEncryptionKey,
+    getUnsafeTestingCryptoConfig,
 } from "../../crypto/index.ts"
+
+// export type { CryptoConfig } from "../../crypto/index.ts"

@@ -6,7 +6,7 @@ import {
     removeAwarenessStates,
 } from "y-protocols/awareness.js"
 
-import { getInsecureCryptoConfigForTesting } from "./2-crypto-factory"
+import { getUnsafeTestingCryptoConfig } from "./2-crypto-factory"
 import { getServerInterface } from "./1-server-client"
 import { type ClientUpdate } from "./-types"
 import {
@@ -15,7 +15,6 @@ import {
     createCrdtSyncProvider,
 } from "./0-provider"
 import { createEventsHelper } from "./ts-helper-lib"
-
 // ----
 
 /**
@@ -40,7 +39,7 @@ export async function createYjsSyncProvider(
 export async function createExampleYjsSyncProvider(yDoc: Y.Doc) {
     return createYjsSyncProvider(yDoc, {
         remoteDocId: "test",
-        cryptoConfig: await getInsecureCryptoConfigForTesting(),
+        cryptoConfig: await getUnsafeTestingCryptoConfig(),
         mergeInitialState: true,
     })
 }
