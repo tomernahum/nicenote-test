@@ -1,0 +1,13 @@
+- Test basically
+- Test thoroughly & write tests
+- Have AI do code review of everything
+- have self do that
+- publish source code
+- closely research and examine crypto properties, (emergent insecurity from secure parts is common)
+    - can we claim 128 bits post quantum security?
+- model crypto system using challenger-adversary game, be formalish
+- make a design doc
+- run above 2 by crypto expert
+
+- signing: support old keys
+

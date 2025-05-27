@@ -1,0 +1,24 @@
+
+Code Structure Notes:
+- the 1-5 files are steps in a chain called by -crypto-factory.ts    client <-> sealedMessage functions
+- the default values are set by calling function (the ones in -crypto-factory.ts), not within the function in the file it is colocated on,  maybe a bit confusing
+
+
+Notes: 
+- we are opinionatedly selecting algorithms from the web crypto api, and combining them into a crypto system designed for our use case, which is encrypted documents made of message lists, with consumers of the roles of readers and read-writers`.
+- this is only a part of the overall crypto system, the key agreement and key management will be a separate library. The storing and relaying of messages is also a separate library.
+- I am not a crypto expert, so it is very likely I may have screwed something up security-wise (it can get very subtle). I try my best to model this, get it reviewed by crypto experts, If you see an issue please contact me (github issues is good!). If I make money off of an app that uses this, I will set up a bug bounty budget and pay for audits
+- similarish more established libraries: - libsodium.js 
+- design doc and security model coming soon
+
+Our crypto system in a nutshell: 
+sign-then-encrypt
+- we asymmetrically sign plaintext (w/ ed25519) to verify people with write permission
+- we symmetrically encrypt (w/ aes-gcm) the signed (+ padded) plaintext to hide the contents from the server
+- we assume the secret keys are already distributed securely.   We offer the ability to dynamically change at run time which keys are being used / are valid  so that another system can handle rotating these keys
+
+
+to look up:
+sign-then-encrypt (vs encrypt-then-sign, vs sign-then-encrypt-then-sign) (vs asymmetric packets)
+hybrid encryption
+signcryption?
