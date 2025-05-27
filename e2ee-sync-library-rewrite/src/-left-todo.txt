@@ -1,7 +1,10 @@
 
 
-- signing
-- disconnect api
+- areAllLocalUpdatesSyncedUpToServer, areRecentUpdatesFailedToSendToServer  (to show in ui if your changes are saved)
+    - maybe more granular too
+
+
+
 
 Later
 - replay updates with delay in the timebatched server thing

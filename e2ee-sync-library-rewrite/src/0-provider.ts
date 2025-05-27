@@ -2,10 +2,7 @@ import { type ClientUpdate } from "./-types"
 import { createBaseYjsProvider, yjsPUpdateEncoder } from "./0-interface-yjs"
 import type { Doc as YDoc } from "yjs"
 import { getServerInterface } from "./1-server-client"
-import {
-    type CryptoConfig,
-    getInsecureCryptoConfigForTesting,
-} from "./2-crypto-factory"
+import { type CryptoConfig } from "./2-crypto-factory"
 import { tryCatch, tryCatch2 } from "./-utils"
 
 // ----
@@ -175,6 +172,15 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
             localCrdtInterface.disconnect()
 
             // cached server data is stored in the local CRDT interface (ydoc object)
+        },
+        setCryptoConfig: (newCryptoConfig: CryptoConfig) => {
+            server.setCryptoConfig(newCryptoConfig)
+        },
+        changeCryptoConfig: async (
+            callback: (cryptoConfig: CryptoConfig) => Promise<CryptoConfig>
+        ) => {
+            const newCryptoConfig = await callback(server.getCryptoConfig())
+            server.setCryptoConfig(newCryptoConfig)
         },
     }
 

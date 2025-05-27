@@ -2,6 +2,10 @@ export {
     createCryptoFactory,
     getUnsafeTestingEncryptionKey,
     getUnsafeTestingCryptoConfig,
-} from "../../crypto/index.ts"
+} from "../../crypto/index"
 
-// export type { CryptoConfig } from "../../crypto/index.ts"
+import { createCryptoFactory } from "../../crypto/index"
+
+// problems with export type { CryptoConfig } from "../../crypto/index"
+
+export type CryptoConfig = Parameters<typeof createCryptoFactory>[0]

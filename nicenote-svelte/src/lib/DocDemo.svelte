@@ -4,7 +4,11 @@
 	import { createYjsSyncProvider } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
 
 	// import { getUnsafeTestingEncryptionKey } from '../../../e2ee-sync-library-rewrite/src/2-crypto-factory';
-	import { getUnsafeTestingCryptoConfig } from '../../../crypto/index';
+	import {
+		generateSigningKeyPair,
+		generateSymmetricEncryptionKey,
+		getUnsafeTestingCryptoConfig
+	} from '../../../crypto/index';
 	import Quill from 'quill';
 	import QuillCursors from 'quill-cursors';
 	import * as Y from 'yjs';
@@ -182,6 +186,9 @@
 			domElement: noteElem,
 			remoteDocId: 'EFGHI'
 		});
+		promise.then((res) => {
+			editor = res;
+		});
 		return async () => {
 			(await promise).deleteEditor();
 			console.log('deleted');
@@ -191,6 +198,38 @@
 </script>
 
 <p>DocDemo</p>
+<button
+	on:click={async () => {
+		editor.yBindingProvider.changeCryptoConfig(async (cryptoConfig) => {
+			console.log('Started using bad signing key');
+			return {
+				...cryptoConfig,
+				signingKey: (await generateSigningKeyPair()).privateKey
+				// encryptionKey: await generateSymmetricEncryptionKey()
+			};
+		});
+	}}
+>
+	start using bad signing key
+	<!-- Not rejecting!! TODO -->
+</button>
+
+<button
+	on:click={async () => {
+		editor.yBindingProvider.changeCryptoConfig(async (cryptoConfig) => {
+			return {
+				...cryptoConfig,
+				signingMode: 'reader',
+				mainVerifyingKey: cryptoConfig.mainEncryptionKey
+			};
+		});
+	}}
+>
+	become read onlyer</button
+>
+
+<button> Stop with the minimum updates</button>
+
 <div bind:this={noteElem} id="note" style="overflow: visible;"></div>
 
 <style>
