@@ -4,15 +4,15 @@
 //     applyRemoteUpdate: (update: LocalUpdate) => void
 // }
 
-import { ClientUpdate, DocId } from "./-types"
-import { bindFirst, BoundFirstAll } from "./-utils"
+import { type ClientUpdate, type DocId } from "./-types"
+import { bindFirst, type BoundFirstAll } from "./-utils"
 import {
     createCryptoFactory,
-    CryptoConfig,
-    CryptoFactoryI,
+    type CryptoConfig,
+    type CryptoFactoryI,
 } from "./2-crypto-factory"
 import {
-    BaseServerConnectionInterfaceShape,
+    type BaseServerConnectionInterfaceShape,
     getBaseServerConnectionInterface,
 } from "./3-server-connection"
 

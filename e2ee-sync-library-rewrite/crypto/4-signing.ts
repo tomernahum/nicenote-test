@@ -1,4 +1,4 @@
-//
+// TODO: It would be cool to make a system where there are arbitrarily many signing identities, and it just returns to the application code who made a change, and the application can decide to apply that change differently based on that parameter (including not applying it at all)
 
 import { decodeList, encodeList } from "./1-encodingList"
 
@@ -17,7 +17,7 @@ export type SigningConfig =
           validOldVerifyingKeys?: SignatureKey[]
 
           mainSigningKey: SignatureKey // (signing key = secret/private key)
-          validOldSigningKeys?: SignatureKey[]
+          validOldSigningKeys?: SignatureKey[] // actually this is not necessary
       }
 export const DEFAULT_SIGNING_CONFIG_VALUES = {
     validOldVerifyingKeys: [] as SignatureKey[],
@@ -27,13 +27,13 @@ export const DEFAULT_SIGNING_CONFIG_VALUES = {
 type Config = typeof DEFAULT_SIGNING_CONFIG_VALUES & SigningConfig
 
 export async function generateSigningKeyPair() {
-    const { publicKey, privateKey } = await crypto.subtle.generateKey(
+    const { publicKey, privateKey } = (await crypto.subtle.generateKey(
         {
             name: "Ed25519",
         },
         true,
         ["sign", "verify"]
-    )
+    )) as CryptoKeyPair
     return { publicKey, privateKey } // aka verifyingKey, signingKey
 }
 export async function getUnsafeTestingSigningKeypair() {
@@ -117,6 +117,7 @@ export async function verifyAndStripOffSignature(
         }
 
         return message
+        // todo: return which type of key was used to verify / signer's identity
     } catch {}
     // try with old keys
     for (const key of config.validOldVerifyingKeys) {
