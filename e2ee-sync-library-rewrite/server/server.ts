@@ -74,7 +74,8 @@ io.on("connection", (socket) => {
         (
             docId: string,
             snapshot: Uint8Array,
-            lastUpdateRowToReplace: number | BigInt
+            lastUpdateRowToReplace: number | BigInt,
+            callback
         ) => {
             console.log(
                 socket.id,
@@ -85,16 +86,32 @@ io.on("connection", (socket) => {
                 // "lastUpdateInDb: ",
                 // getHighestIdForDoc(docId)
             )
-            if (lastUpdateRowToReplace === -1) {
-                // delete everything
-                processSnapshot(docId, snapshot, Number.MAX_SAFE_INTEGER - 1)
-                return
-            }
+            const realLastUpdateRowToReplace =
+                lastUpdateRowToReplace === -1
+                    ? Number.MAX_SAFE_INTEGER - 1
+                    : Number(lastUpdateRowToReplace)
+
             const lastUpdateRow = processSnapshot(
                 docId,
                 snapshot,
-                lastUpdateRowToReplace
+                realLastUpdateRowToReplace
             )
+            if (typeof lastUpdateRow !== "number") {
+                console.error(
+                    "Last update row was not a number, may have been a big int"
+                )
+                callback({
+                    success: false,
+                    errorMessage:
+                        "document has had too many changes. Please contact us if this happens. Your change may still have gone through",
+                })
+                // TODO: maybe rotate rowIds down or something. if rowIds were per document, this shouldn't happen for centuries (but they are global btw)
+                return
+            }
+            callback({
+                success: true,
+                rowId: lastUpdateRow,
+            })
         }
     ),
         socket.on(

@@ -21,7 +21,12 @@ export interface ClientToServerEvents {
     applySnapshot: (
         docId: string,
         snapshot: Uint8Array,
-        lastUpdateRowToReplace: number // | BigInt
+        lastUpdateRowToReplace: number, // | BigInt
+        callback: (
+            result:
+                | { success: true; rowId: number }
+                | { success: false; errorMessage: string }
+        ) => void
     ) => void
 
     getDoc: (

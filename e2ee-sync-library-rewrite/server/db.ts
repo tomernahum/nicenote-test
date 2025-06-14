@@ -92,3 +92,5 @@ export function getHighestIdForDoc(docId: string) {
     const result = select.get(docId)
     return result ? result["MAX(id)"] : null
 }
+
+// TODO: low-severity vulnerability: clients can tell how much activity other documents in the system have got by looking at the returned rowId. ideally rowId would be only for the document itself. So maybe make it a separate column

@@ -41,6 +41,8 @@ export function getServerInterface(
         setCryptoConfig: server.crypto.changeCryptoConfig,
     }
 }
+
+// also binds to a doc apparently.
 function getServerInterfaceWithTimeBatching(
     docId: DocId,
     server: BaseServerConnectionInterfaceShape,
@@ -62,12 +64,12 @@ function getServerInterfaceWithTimeBatching(
 
     const queuedUpdates: {
         update: ClientUpdate[]
-        promiseResolver: () => void
+        promiseResolver: (rowId: number) => void
     }[] = []
     const queuedSnapshots: {
         updates: ClientUpdate[]
         lastUpdateRowToReplace: number
-        promiseResolver: () => void
+        promiseResolver: (rowId: number) => void
     }[] = []
 
     async function onTimeToSendUpdates() {
@@ -82,22 +84,31 @@ function getServerInterfaceWithTimeBatching(
             updatesToSend.length > 0 ||
             timeBatchingConfigReal.sendUpdatesToServerWhenNoUserUpdate
         ) {
-            await basicInterface.addUpdates(docId, updatesToSend) // this will encrypt them all into one message to the server
+            const updatesRowId = await basicInterface.addUpdates(
+                docId,
+                updatesToSend
+            ) // this will encrypt them all into one message to the server
+
+            // resolve promises
+            queuedUpdates.forEach(({ promiseResolver }) =>
+                promiseResolver(updatesRowId)
+            )
+            queuedUpdates.splice(0, queuedUpdates.length) // clear
         }
         if (snapshotToSend) {
-            await basicInterface.applySnapshot(
+            const snapshotRowId = await basicInterface.applySnapshot(
                 docId,
                 snapshotToSend.updates,
                 snapshotToSend.lastUpdateRowToReplace
             )
+
+            // resolve promises
+            // note: we resolve the promises of each snapshot even though we only apply the last one
+            queuedSnapshots.forEach(({ promiseResolver }) =>
+                promiseResolver(snapshotRowId)
+            )
+            queuedSnapshots.splice(0, queuedSnapshots.length) // clear
         }
-
-        // resolve promises
-        queuedUpdates.forEach(({ promiseResolver }) => promiseResolver())
-        queuedUpdates.splice(0, queuedUpdates.length) // clear
-
-        queuedSnapshots.forEach(({ promiseResolver }) => promiseResolver()) // note: we resolve the promises of each snapshot even though we only apply the last one
-        queuedSnapshots.splice(0, queuedSnapshots.length) // clear
     }
 
     let intervalId = setInterval(
@@ -109,7 +120,7 @@ function getServerInterfaceWithTimeBatching(
         crypto: basicInterface.crypto,
 
         addUpdates: async (updates: ClientUpdate[]) => {
-            const promise = new Promise<void>((resolve) => {
+            const promise = new Promise<number>((resolve) => {
                 queuedUpdates.push({
                     update: updates,
                     promiseResolver: resolve,
@@ -122,7 +133,7 @@ function getServerInterfaceWithTimeBatching(
             updates: ClientUpdate[],
             lastUpdateRowToReplace: number
         ) => {
-            const promise = new Promise<void>((resolve) => {
+            const promise = new Promise<number>((resolve) => {
                 queuedSnapshots.push({
                     updates,
                     lastUpdateRowToReplace,
@@ -228,7 +239,11 @@ function getBasicEncryptedServerInterface(
             const sealedUpdate = await crypto.clientMessagesToSealedMessage(
                 updates
             )
-            server.applySnapshot(docId, sealedUpdate, lastUpdateRowToReplace)
+            return server.applySnapshot(
+                docId,
+                sealedUpdate,
+                lastUpdateRowToReplace
+            )
         },
     }
 

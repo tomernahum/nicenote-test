@@ -82,7 +82,7 @@ export function getBaseServerConnectionInterface() {
                     } else {
                         resolve(result.rowId)
                     }
-                }
+                })
             })
         },
 
@@ -133,12 +133,21 @@ export function getBaseServerConnectionInterface() {
             snapshot: Uint8Array,
             lastUpdateRowToReplace: number // may change to another indicator of what is in the snapshot. Valid if we never receive an update out of order from it's row... with current server implementation I think it should be fine, but not 100%
         ) => {
-            socket.emit(
-                "applySnapshot",
-                docId,
-                snapshot,
-                lastUpdateRowToReplace
-            )
+            return new Promise<number>((resolve, reject) => {
+                socket.emit(
+                    "applySnapshot",
+                    docId,
+                    snapshot,
+                    lastUpdateRowToReplace,
+                    (result) => {
+                        if (!result.success) {
+                            reject(new Error(result.errorMessage))
+                        } else {
+                            resolve(result.rowId)
+                        }
+                    }
+                )
+            })
         },
 
         // TODO: what about onConnectionLost??
