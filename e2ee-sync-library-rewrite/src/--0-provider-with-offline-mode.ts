@@ -1,9 +1,10 @@
-import { localCrdtInterface } from "./0-provider"
+import { localCrdtInterfaceO } from "./0-provider"
 import { CRDTUpdateEncoder } from "./0-provider"
 import { createCryptoFactory, CryptoConfig } from "./2-crypto-factory"
 import { getServerInterface } from "./1-server-client"
 import { ClientUpdate } from "./-types"
 import { decodeList, encodeList } from "../crypto/1-encodingList"
+import { createObservable } from "./ts-helper-lib"
 
 /* 
 On load:
@@ -20,7 +21,7 @@ On load:
 // This file is still WIP
 
 export async function createOnlineOfflineStateManager<CRDTUpdate>(
-    localCrdtInterface: localCrdtInterface<CRDTUpdate>,
+    localCrdtInterface: localCrdtInterfaceO<CRDTUpdate>,
     localInterfaceUpdateEncoder: CRDTUpdateEncoder<CRDTUpdate>,
     // later we may dependency inject serverInterface and especially local storage interface
     params: {
@@ -34,7 +35,7 @@ export async function createOnlineOfflineStateManager<CRDTUpdate>(
         //onReconnect?: "mergeLocalStateIntoOnline" | "replaceLocalStateWithOnline"
     }
 ) {
-    // setup objects
+    // setup objects (might get passed in later)
     const storage = getLocalStorageInterface(
         params.remoteDocId,
         params.cryptoConfig
@@ -48,9 +49,24 @@ export async function createOnlineOfflineStateManager<CRDTUpdate>(
             // sendUpdatesToServerWhenNoUserUpdate: false,
         }
     ) // I think this does not auto connect until we call .connect()
+
+    // ----
+
+    const { storageConnectionPromise, serverConnectionPromise, internalState } =
+        setupStorageAndServerConnections(server, storage)
+
+    function getMainState() {
+        if (internalState.serverConnectionStatus === "connected") {
+            return internalState.onlineState
+        }
+        if (internalState.storageConnectionStatus === "connected") {
+            return internalState.storageState
+        }
+        return [] //null,
+    }
+
     let out = {
-        mode: "connecting" as "connecting" | "online" | "offline",
-        mainState: [] as ClientUpdate[], // clientUpdate still needs to be converted to CRDTUpdate
+        getMainState,
 
         getCryptoConfig: server.getCryptoConfig,
         setCryptoConfig: (newCryptoConfig: CryptoConfig) => {
@@ -65,35 +81,90 @@ export async function createOnlineOfflineStateManager<CRDTUpdate>(
             storage.setCryptoConfig(newCryptoConfig)
         },
     }
+}
+// nvmnd
+function setupStorageAndServerConnections(
+    server: ReturnType<typeof getServerInterface>,
+    storage: ReturnType<typeof getLocalStorageInterface>
+) {
+    const internalState = {
+        serverConnectionStatus: "connecting" as
+            | "connecting"
+            | "connected"
+            | "could not connect"
+            | "disconnected",
+        onlineState: [] as ClientUpdate[],
 
-    // first connect to the local storage
-    await storage.connect()
-    const state = await storage.getStateAsUpdates()
-    out.mainState = state
+        storageConnectionStatus: "connecting" as
+            | "connecting"
+            | "connected"
+            | "could not connect"
+            | "disconnected",
+        storageState: [] as ClientUpdate[],
+    }
 
-    // then connect to the remote server
-    server
+    async function onServerConnected() {
+        internalState.onlineState = (await server.getRemoteUpdateList()).map(
+            (update) => update.update
+        )
+
+        server.subscribeToRemoteUpdates((updates, rowId) => {
+            internalState.onlineState =
+                internalState.onlineState.concat(updates)
+            storage.applySnapshot(internalState.onlineState) // may fail if storage is not connected/available
+        })
+
+        internalState.serverConnectionStatus = "connected"
+    }
+
+    async function onStorageConnected() {
+        internalState.storageConnectionStatus = "connected"
+        internalState.storageState = await storage.getStateAsUpdates()
+    }
+
+    const storageConnectionPromise = storage
         .connect()
         .then(() => {
-            return server.getRemoteUpdateList()
+            onStorageConnected()
+            // todo maybe: detect storage connection loss and stuff
         })
-        .then((serverUpdates) => {
-            out.mode = "online"
-            out.mainState = serverUpdates.map((update) => update.update)
+        .catch((e) => {
+            internalState.storageConnectionStatus = "could not connect"
+            console.warn("could not connect to storage for a doc", e)
 
-            // TODO: subscribe to server, detect connection loss
+            // todo maybe: try to reconnect (maybe end user needs to trigger reconnection after permissions granted, or they can just reload the whole doc)
+        })
 
-            server.subscribeToRemoteUpdates((updates, rowId) => {
-                out.mainState = out.mainState.concat(updates)
-                storage.applySnapshot(out.mainState)
+    const serverConnectionPromise = server
+        .connect()
+        .then(() => {
+            onServerConnected()
+            server.onConnectionLost(() => {
+                internalState.serverConnectionStatus = "disconnected"
             })
-            // see svelte folder file
+            // todo: try to reconnect  (or maybe this goes in the server interface?)
+        })
+        .catch((e) => {
+            internalState.serverConnectionStatus = "could not connect"
+            console.warn("could not connect to server for a doc", e)
+
+            // todo: try to reconnect (or maybe this goes in the server interface?)
         })
 
-    return
+    return {
+        storageConnectionPromise,
+        serverConnectionPromise,
+        internalState,
+    }
 }
 
-function getLocalStorageInterface(docId: string, cryptoConfig: CryptoConfig) {
+//
+
+//
+export function getLocalStorageInterface(
+    docId: string,
+    cryptoConfig: CryptoConfig
+) {
     function base64Encode(bytes: Uint8Array | ArrayBuffer) {
         const realBytes = "buffer" in bytes ? bytes : new Uint8Array(bytes)
 
@@ -169,12 +240,12 @@ function getLocalStorageInterface(docId: string, cryptoConfig: CryptoConfig) {
     }
 }
 
-type StorageInterface = {
-    connect: () => void
-    get: () => ClientUpdate[]
-    addUpdates: (updates: ClientUpdate[]) => Promise<number>
-    applySnapshot: (
-        snapshot: ClientUpdate[],
-        lastUpdateRowToReplace: number
-    ) => void
-}
+// type StorageInterface = {
+//     connect: () => void
+//     get: () => ClientUpdate[]
+//     addUpdates: (updates: ClientUpdate[]) => Promise<number>
+//     applySnapshot: (
+//         snapshot: ClientUpdate[],
+//         lastUpdateRowToReplace?: number
+//     ) => void
+// }

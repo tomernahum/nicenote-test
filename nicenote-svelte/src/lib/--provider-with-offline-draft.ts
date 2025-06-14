@@ -11,7 +11,7 @@ import {
 import {
 	createCrdtSyncProvider,
 	type CRDTUpdateEncoder,
-	type localCrdtInterface
+	type localCrdtInterfaceO
 } from '../../../e2ee-sync-library-rewrite/src/0-provider';
 import {
 	assert,
@@ -81,7 +81,7 @@ function createLocalStorageInterface(docId: string) {
 
 // offline counterpart of createCrdtSyncProvider.   Actually maybe we could reuse it and replace the server interface. but WET
 function createLSOfflineDocProvider<CRDTUpdate>(
-	localCrdtInterface: localCrdtInterface<CRDTUpdate>, // maybe used to subscribe to updates?
+	localCrdtInterface: localCrdtInterfaceO<CRDTUpdate>, // maybe used to subscribe to updates?
 	storageInterface: StorageInterface,
 	localCrdtUpdateEncoder: CRDTUpdateEncoder<CRDTUpdate>
 	//NOTE: initial state is always merged... you should probably all this with an empty initial state CRDT
@@ -220,7 +220,7 @@ function createLSOfflineDocProvider<CRDTUpdate>(
 // }
 
 async function createOnlineAndOfflineDocNew<CRDTUpdate>(
-	doc: localCrdtInterface<CRDTUpdate>,
+	doc: localCrdtInterfaceO<CRDTUpdate>,
 	localInterfaceUpdateEncoder: CRDTUpdateEncoder<CRDTUpdate>,
 	storage: StorageInterface,
 	params: {

@@ -11,7 +11,7 @@ import { getServerInterface } from "./1-server-client"
 import { type ClientUpdate } from "./-types"
 import {
     type CRDTUpdateEncoder,
-    type localCrdtInterface,
+    type localCrdtInterfaceO,
     createCrdtSyncProvider,
 } from "./0-provider"
 import { createEventsHelper } from "./ts-helper-lib"
@@ -46,6 +46,65 @@ export async function createExampleYjsSyncProvider(yDoc: Y.Doc) {
 
 // ----
 
+function createProppaCRDTProvider<CRDTUpdate>(
+    localCrdtInterface: localCrdtInterfaceO<CRDTUpdate>,
+    localInterfaceUpdateEncoder: CRDTUpdateEncoder<CRDTUpdate>
+) {
+    function decodeWithRowIdToCrdt(
+        updates: { update: ClientUpdate; rowId: number }[]
+    ): CRDTUpdate[] {
+        return updates.map((update) =>
+            localInterfaceUpdateEncoder.decode(update.update)
+        )
+    }
+    function encodeFromCrdt(updates: CRDTUpdate[]): ClientUpdate[] {
+        return updates.map((update) =>
+            localInterfaceUpdateEncoder.encode(update)
+        )
+    }
+
+    localCrdtInterface
+    return {
+        applyRemoteUpdates: (updates: ClientUpdate[]) => {
+            const crdtEncoded = updates.map((update) =>
+                localInterfaceUpdateEncoder.decode(update)
+            )
+            localCrdtInterface.applyRemoteUpdates(crdtEncoded)
+        },
+        subscribeToLocalUpdates: (callback: (update: ClientUpdate) => void) => {
+            return localCrdtInterface.subscribeToLocalUpdates((update) => {
+                callback(localInterfaceUpdateEncoder.encode(update))
+            })
+        },
+        getSnapshot: () => {
+            const crdtEncoded = localCrdtInterface.getSnapshot()
+            return encodeFromCrdt(crdtEncoded)
+        },
+        getChangesNotAppliedToAnotherDoc: (
+            remoteDocChanges: ClientUpdate[]
+        ) => {
+            const crdtEncoded = remoteDocChanges.map((update) =>
+                localInterfaceUpdateEncoder.decode(update)
+            )
+            return localCrdtInterface.getChangesNotAppliedToAnotherDoc(
+                crdtEncoded
+            )
+        },
+        disconnect: () => {
+            localCrdtInterface.disconnect()
+        },
+    }
+}
+
+export function createProppaYjsCRDTInterface(yDoc: Y.Doc) {
+    const yjsProvider = createBaseYjsProvider(yDoc)
+    const updateEncoder = yjsPUpdateEncoder()
+    return {
+        ...createProppaCRDTProvider(yjsProvider, updateEncoder),
+        awareness: yjsProvider.awareness,
+        // y doc is known by the caller
+    }
+}
 // ----
 
 type LibraryUpdate = ClientUpdate
@@ -200,6 +259,7 @@ export function createBaseYjsProvider(
         /**
          * Used for merging into the online doc
          * if you are lazy implementing this in another provider, you could just return getSnapshot
+         * (converts a diff of states to a change object, could also be used for passing in updates directly without going through your main crdt object, if I add a method for that
          */
         getChangesNotAppliedToAnotherDoc: (
             remoteDocUpdates: YProviderUpdate[]
@@ -250,7 +310,7 @@ export function createBaseYjsProvider(
         reset() {
             //
         },
-    } satisfies localCrdtInterface<YProviderUpdate> & {
+    } satisfies localCrdtInterfaceO<YProviderUpdate> & {
         [key: string]: unknown
     } // there may be a better way out there to do this typing interface implementation thing
 }

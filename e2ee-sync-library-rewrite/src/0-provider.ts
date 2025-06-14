@@ -8,7 +8,7 @@ import { tryCatch, tryCatch2 } from "./-utils"
 // ----
 
 // TYPES USED
-export type localCrdtInterface<CRDTUpdate> = {
+export type localCrdtInterfaceO<CRDTUpdate> = {
     applyRemoteUpdates: (updates: CRDTUpdate[]) => void
     subscribeToLocalUpdates: (
         callback: (update: CRDTUpdate) => void
@@ -32,7 +32,7 @@ export type CRDTUpdateEncoder<CRDTUpdate> = {
 // now can also create providers with same api but for any crdt (and I could make a crdt out of reducers too). Hopefully it is similar enough though
 
 export async function createCrdtSyncProvider<CRDTUpdate>(
-    localCrdtInterface: localCrdtInterface<CRDTUpdate>,
+    localCrdtInterface: localCrdtInterfaceO<CRDTUpdate>,
     localInterfaceUpdateEncoder: CRDTUpdateEncoder<CRDTUpdate>,
     params: {
         remoteDocId: string
