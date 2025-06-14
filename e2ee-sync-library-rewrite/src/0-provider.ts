@@ -8,19 +8,35 @@ import { tryCatch, tryCatch2 } from "./-utils"
 // ----
 
 // TYPES USED
+
+// outdated type. Likely rewriting this whole file anyways so
 export type localCrdtInterfaceO<CRDTUpdate> = {
     applyRemoteUpdates: (updates: CRDTUpdate[]) => void
     subscribeToLocalUpdates: (
-        callback: (update: CRDTUpdate) => void
+        callback: (update: CRDTUpdate) => void,
     ) => () => void
 
     getChangesNotAppliedToAnotherDoc: (
-        remoteDocChanges: CRDTUpdate[]
+        remoteDocChanges: CRDTUpdate[],
     ) => CRDTUpdate[]
     getSnapshot: () => CRDTUpdate[]
     // maybe: createSnapshot: (updatesToMerge: CRDTUpdate[]) => CRDTUpdate[] // (pure)
     disconnect: () => void
 }
+
+// export type localCrdtInterfaceNew = {
+//     applyRemoteUpdates: (updates: ClientUpdate[]) => void
+//     subscribeToLocalUpdates: (
+//         callback: (update: ClientUpdate) => void
+//     ) => () => void
+
+//     getChangesNotAppliedToAnotherDoc: (
+//         remoteDocChanges: ClientUpdate[]
+//     ) => ClientUpdate[]
+//     getSnapshot: () => ClientUpdate[]
+//     disconnect: () => void
+// }
+
 export type CRDTUpdateEncoder<CRDTUpdate> = {
     encode: (update: CRDTUpdate) => ClientUpdate
     decode: (update: ClientUpdate) => CRDTUpdate
@@ -43,7 +59,7 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
         snapshotMinUpdateCount?: number
         // TODO
         //onReconnect?: "mergeLocalStateIntoOnline" | "replaceLocalStateWithOnline"
-    }
+    },
 ) {
     // THIS WOULD BE WHAT createSyncedYDocProviderDemo IS NOW
 
@@ -55,7 +71,7 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
             timeBetweenUpdatesMs: 200,
             sendUpdatesToServerWhenNoUserUpdate: true,
             // sendUpdatesToServerWhenNoUserUpdate: false,
-        }
+        },
     )
     console.debug("created server interface")
     const { error: connectError } = await tryCatch(server.connect())
@@ -82,7 +98,7 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
                 decodeWithRowIdToCrdt(remoteDocUpdates)
             const diffUpdates =
                 localCrdtInterface.getChangesNotAppliedToAnotherDoc(
-                    remoteDocUpdatesDecoded
+                    remoteDocUpdatesDecoded,
                 )
             server.addUpdates(encodeFromCrdt(diffUpdates))
         }
@@ -102,7 +118,7 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     let highestUpdateRowSeen = -1
     server.subscribeToRemoteUpdates((updates, rowId) => {
         const decodedUpdates = updates.map((update) =>
-            localInterfaceUpdateEncoder.decode(update)
+            localInterfaceUpdateEncoder.decode(update),
         )
         localCrdtInterface.applyRemoteUpdates(decodedUpdates)
         console.debug(`applied (${decodedUpdates.length}) new remote updates`)
@@ -118,7 +134,7 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
     async function doSnapshot() {
         const snapshotUpdatesRaw = localCrdtInterface.getSnapshot()
         const encodedSnapshotUpdates = snapshotUpdatesRaw.map(
-            localInterfaceUpdateEncoder.encode
+            localInterfaceUpdateEncoder.encode,
         )
 
         // Applies the snapshot replacing up to the last update seen by the client
@@ -177,7 +193,7 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
             server.setCryptoConfig(newCryptoConfig)
         },
         changeCryptoConfig: async (
-            callback: (cryptoConfig: CryptoConfig) => Promise<CryptoConfig>
+            callback: (cryptoConfig: CryptoConfig) => Promise<CryptoConfig>,
         ) => {
             const newCryptoConfig = await callback(server.getCryptoConfig())
             server.setCryptoConfig(newCryptoConfig)
@@ -188,19 +204,19 @@ export async function createCrdtSyncProvider<CRDTUpdate>(
 
     function decodeToCrdt(updates: ClientUpdate[]): CRDTUpdate[] {
         return updates.map((update) =>
-            localInterfaceUpdateEncoder.decode(update)
+            localInterfaceUpdateEncoder.decode(update),
         )
     }
     function decodeWithRowIdToCrdt(
-        updates: { update: ClientUpdate; rowId: number }[]
+        updates: { update: ClientUpdate; rowId: number }[],
     ): CRDTUpdate[] {
         return updates.map((update) =>
-            localInterfaceUpdateEncoder.decode(update.update)
+            localInterfaceUpdateEncoder.decode(update.update),
         )
     }
     function encodeFromCrdt(updates: CRDTUpdate[]): ClientUpdate[] {
         return updates.map((update) =>
-            localInterfaceUpdateEncoder.encode(update)
+            localInterfaceUpdateEncoder.encode(update),
         )
     }
 }

@@ -18,14 +18,20 @@ import {
     verifyAndStripOffSignature,
 } from "./4-signing"
 import {
-    addVersion,
-    stripOffVersionAndConfirmItIsValid,
+    addSchemaVersion,
+    stripOffSchemaVersionAndConfirmItIsValid,
     DEFAULT_VERSION_CONFIG,
-    VersionConfig,
+    SchemaVersionConfig,
 } from "./5-versioning"
 
 type ClientMessage = Uint8Array
 type SealedMessage = Uint8Array
+
+// type RichClientMessage = {
+//     id: string,
+//     content: Uint8Array
+// }
+// could also add support for a wide range of encodable
 
 /*
 Steps:
@@ -42,7 +48,7 @@ Sign the plaintext, not the ciphertext, so that the signature data is authentica
 export type CryptoConfig = PaddingConfig &
     EncryptionConfig &
     SigningConfig &
-    VersionConfig // includes optional properties
+    SchemaVersionConfig // includes optional properties
 
 const DEFAULT_CRYPTO_CONFIG_VALUES = {
     ...DEFAULT_PADDING_CONFIG_VALUES,
@@ -54,7 +60,7 @@ const DEFAULT_CRYPTO_CONFIG_VALUES = {
 
 type RealConfig = typeof DEFAULT_CRYPTO_CONFIG_VALUES & CryptoConfig
 
-/** Do not call >4 billion times with the same encryption key (across any device) */
+/** Do not call >4 billion times with the same encryption key (across any device), due to unacceptable chance of an IV overlap */
 export async function clientMessagesToSealedMessage(
     config: CryptoConfig,
     clientMessages: ClientMessage[]
@@ -68,7 +74,7 @@ export async function clientMessagesToSealedMessage(
 
     const signed = await sign(c, padded)
     const encrypted = await encrypt(c, signed)
-    const versioned = addVersion(c, encrypted) // v0
+    const versioned = addSchemaVersion(c, encrypted) // v0
 
     return versioned
 }
@@ -81,7 +87,7 @@ export async function sealedMessageToClientMessages(
         ...config,
     }
 
-    const [deVersioned, version] = stripOffVersionAndConfirmItIsValid(
+    const [deVersioned, version] = stripOffSchemaVersionAndConfirmItIsValid(
         c,
         sealedMessage
     )
@@ -98,8 +104,8 @@ export async function sealedMessageToClientMessages(
 /** Can also just call above functions directly, but this is for if you want a more oop thing to call that can remember config
  *
  * Meant to be used with a separate key rotation system too provide PCS, maybe FS
- * Do not seal messages >2^32 (4 billion) times with the same encryption key (across any device), or the encryption breaks
- * Do not use more than 2^48 (281 trillion) encryption keys total, apparently
+ * Do not seal messages >2^32 (4 billion) times with the same encryption key (across any device), or the encryption breaks, due to there being an unacceptable chance of a randomly generated IV overlap
+ * Do not use more than 2^48 (281 trillion) encryption keys total, apparently (read here https://soatok.blog/2020/05/13/why-aes-gcm-sucks/)
  */
 export function createCryptoFactory(config: CryptoConfig) {
     let c: RealConfig = {

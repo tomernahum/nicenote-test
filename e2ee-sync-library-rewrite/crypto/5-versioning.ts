@@ -1,6 +1,6 @@
 import { decodeList, encodeList } from "./1-encodingList"
 
-export type VersionConfig = {
+export type SchemaVersionConfig = {
     schemaVersion?: string
     backwardsCompatibleSchemaVersions?: string[]
 }
@@ -9,14 +9,14 @@ export const DEFAULT_VERSION_CONFIG = {
     backwardsCompatibleSchemaVersions: ["v0001"],
 }
 
-type Config = typeof DEFAULT_VERSION_CONFIG & VersionConfig
+type Config = typeof DEFAULT_VERSION_CONFIG & SchemaVersionConfig
 
-export function addVersion(config: Config, message: Uint8Array) {
+export function addSchemaVersion(config: Config, message: Uint8Array) {
     const versionBytes = new TextEncoder().encode(config.schemaVersion)
     return encodeList([versionBytes, message])
 }
 
-export function stripOffVersionAndConfirmItIsValid(
+export function stripOffSchemaVersionAndConfirmItIsValid(
     config: Config,
     incomingData: Uint8Array
 ) {

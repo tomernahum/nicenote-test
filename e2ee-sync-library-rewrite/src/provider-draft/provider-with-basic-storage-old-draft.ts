@@ -2,7 +2,7 @@ import { type getLocalStorageInterface } from "../--0-provider-with-offline-mode
 import { ClientUpdate } from "../-types"
 import { type getServerInterface } from "../1-server-client"
 
-export type localCrdtInterface<CRDTUpdate> = {
+export type localCrdtInterface = {
     applyRemoteUpdates: (updates: ClientUpdate[]) => void
     subscribeToLocalUpdates: (
         callback: (update: ClientUpdate) => void
@@ -46,8 +46,8 @@ function getStorageAndServerInterface(
 }
 
 type ConnectionStatus = "connecting" | "connected" | "failed" | "disconnected" // failed == could not connect
-async function createCrdtSyncStoreProvider<CRDTUpdate>(
-    crdtInterface: localCrdtInterface<CRDTUpdate>,
+async function createCrdtSyncStoreProvider(
+    crdtInterface: localCrdtInterface,
     server: ReturnType<typeof getServerInterface>,
     storage: ReturnType<typeof getLocalStorageInterface>,
     params: {

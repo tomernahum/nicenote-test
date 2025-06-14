@@ -56,6 +56,49 @@ export function decodeList(encoded: Uint8Array) {
     return out
 }
 
+// unrelated utility functions:
+// untested atow
+
+const TypeMarker = {
+    BINARY: 0,
+    STRING: 1,
+    // 2-255 are available for future use
+} as const
+
+export function encodeListWithMixedTypes(list: (Uint8Array | string)[]) {
+    return encodeList(
+        list.map((item) => {
+            if (typeof item === "string") {
+                // Add type marker for string
+                const encoded = new TextEncoder().encode(item)
+                const result = new Uint8Array(encoded.length + 1)
+                result[0] = TypeMarker.STRING
+                result.set(encoded, 1)
+                return result
+            }
+            // Add type marker for binary
+            const result = new Uint8Array(item.length + 1)
+            result[0] = TypeMarker.BINARY
+            result.set(item, 1)
+            return result
+        })
+    )
+}
+
+export function decodeListWithMixedTypes(encoded: Uint8Array) {
+    const decodedList = decodeList(encoded)
+    return decodedList.map((item) => {
+        const typeMarker = item[0]
+        const data = item.slice(1)
+        if (typeMarker === TypeMarker.STRING) {
+            return new TextDecoder().decode(data)
+        } else if (typeMarker === TypeMarker.BINARY) {
+            return data
+        }
+        throw new Error("Invalid type marker in encoded data")
+    })
+}
+
 // Functions used by our crypto sequence:
 
 export function encodeMultipleUpdatesAsOne(
