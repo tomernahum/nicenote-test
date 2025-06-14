@@ -114,6 +114,9 @@ export function createProvider(
     }
 }
 
+// todo in each provider: mergeInitialState logic
+// todo in online: (after everything): snapshots
+
 function createOnlineProvider(
     localCRDTInterface: LocalCrdtInterface,
     localCache: ReturnType<typeof createLocalStorageCache>,
@@ -165,6 +168,26 @@ function createOnlineProvider(
     return {
         turn(onOrOff: "on" | "off") {
             isTurnedOff = onOrOff === "off"
+        },
+
+        // maybe:
+        async initializeConnectionWithMergeAndTurnOn() {
+            const pendingClientUpdates = (
+                await localCache.getUnconfirmedOptimisticUpdates()
+            ).map((u) => encodeListWithMixedTypes([u.id, u.update]))
+            const serverState = (await server.getRemoteUpdateList()).map(
+                (u) => u.update
+            )
+            // localCRDT should have the pending updates and previous server state already
+
+            localCRDTInterface.applyRemoteUpdates(serverState)
+            const diffUpdates =
+                localCRDTInterface.getChangesNotAppliedToAnotherDoc(serverState)
+
+            // todo: merge with server state
+            // todo: transition to online mode
+            // also need to make sure the remoteUpdateSubscriptions and stuff is really on
+            // maybe before we do any of this we need to implement server disconnect notification logic and recconect
         },
 
         /** for sending an update without having it be in the crdt. Still caches it */
