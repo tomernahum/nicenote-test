@@ -32,65 +32,82 @@ export function createProvider(
     let mode: "online" | "offline" | "both" = "offline"
 
     const localPersistedCache = createLocalStorageCache()
-    const onlineProvider = createOnlineProvider(localPersistedCache, server)
-    const offlineProvider = createOfflineProvider(localPersistedCache)
-
-    const localInMemoryCache = createInMemoryCache()
-    const onlineProviderWithinBothMode = createOnlineProvider(
-        localInMemoryCache,
-        server
+    const offlineProvider = createOfflineProvider(
+        mainLocalCrdtInterface,
+        localPersistedCache,
+        "on"
     )
-    // offline provider within both mode is the same. Also the mainLocalCrdtInterface is used as the offline one.
+    const onlineProvider = createOnlineProvider(
+        mainLocalCrdtInterface,
+        localPersistedCache,
+        server,
+        "off"
+    )
 
-    mainLocalCrdtInterface.subscribeToLocalUpdates((update) => {
+    async function onConnectionEstablished() {
+        // TODO make it correctly
+        const mergeMode = "auto"
+        // todo: make mergeMode a param, and add a mode that sometimes goes into both mode instead for manual merging
+        if (mergeMode === "auto") {
+            // merge the server state and the local cache state
+            // TODO: look over.    Right now it is merging with the crdt holder not the local cache. Which may be fine
+
+            const remoteDocUpdates = await server.getRemoteUpdateList()
+            const remoteDocUpdatesWithoutIds = remoteDocUpdates.map(
+                (u) => u.update
+            )
+
+            mainLocalCrdtInterface.applyRemoteUpdates(
+                remoteDocUpdatesWithoutIds
+            )
+
+            const diffUpdates =
+                mainLocalCrdtInterface.getChangesNotAppliedToAnotherDoc(
+                    remoteDocUpdatesWithoutIds
+                )
+
+            // Send diff updates to server
+            await server.addUpdates(diffUpdates)
+            // promise should resolve when server confirms receipt. Or throw if it fails
+
+            // what if an update comes in while we are merging? or user makes an update while we are merging? TODO
+            // maybe this logic needs to go in the provider?
+
+            // once merged, transition to online mode
+            offlineProvider.turn("off")
+            onlineProvider.turn("on")
+        }
+        if (mergeMode === "auto2") {
+            // merge the server state and the local cache state
+            const pendingUpdates =
+                await localPersistedCache.getUnconfirmedOptimisticUpdates()
+
+            const encodedPendingUpdates = pendingUpdates.map((u) =>
+                encodeListWithMixedTypes([u.id, u.update])
+            )
+
+            await server.addUpdates(encodedPendingUpdates)
+            // promise should resolve when server confirms receipt. Or throw if it fails
+
+            // what if user makes an update while we are merging? TODO
+            // maybe this logic needs to go in the provider?
+
+            // once merged, transition to online mode
+            offlineProvider.turn("off")
+            onlineProvider.turn("on")
+        }
+    }
+    async function onConnectionLost() {
         if (mode === "online") {
-            onlineProvider.notifyOfLocalUpdate(update)
-        } else if (mode === "offline") {
-            offlineProvider.notifyOfLocalUpdate(update)
-        } else if (mode === "both") {
-            // in both mode the main local crdt interface is used as the offline one (may change)
-            offlineProvider.notifyOfLocalUpdate(update)
+            // transition to offline mode
+            onlineProvider.turn("off")
+            offlineProvider.turn("on")
         }
-    })
-
-    function onReceivedRemoteUpdate(update: ClientUpdate, rowId: number) {
-        if (mode === "online") {
-            onlineProvider.notifyOfRemoteUpdate(update, rowId)
-        } else if (mode === "both") {
-            // add it to the correct local crdt interface
-            onlineProviderWithinBothMode.notifyOfRemoteUpdate(update, rowId)
-            secondaryLocalCrdtInterface.applyRemoteUpdates([update])
-        }
-    }
-    server.subscribeToRemoteUpdates((updates, rowId) => {
-        for (const update of updates) {
-            onReceivedRemoteUpdate(update, rowId)
-        }
-    })
-
-    function onlineToOfflineMode() {
-        mode = "offline"
-    }
-    function offlineToOnlineMode() {
-        mode = "online"
-    }
-    function offlineToBothMode() {}
-
-    function exitOfflineMode() {
-        if (true) {
-            offlineToOnlineMode()
-        } else {
-            offlineToBothMode()
-        }
+        // todo: both mode logic
     }
 
-    server.connect().then(() => {
-        exitOfflineMode()
-    })
-    // server.onConnectionLost(() => {
-    //     onlineToOfflineMode()
-    // })
-    // todo: attempt to regain connection when offline (not just when initialized)
+    // Establish server connections, detect disconnection and reconnection
+    // todo
 
     return {
         //
@@ -98,41 +115,90 @@ export function createProvider(
 }
 
 function createOnlineProvider(
+    localCRDTInterface: LocalCrdtInterface,
     localCache: ReturnType<typeof createLocalStorageCache>,
-    server: ReturnType<typeof getServerInterface>
+    server: ReturnType<typeof getServerInterface>,
+    onOrOff: "on" | "off"
 ) {
-    return {
-        async notifyOfLocalUpdate(update: ClientUpdate) {
-            const clientUpdateId = crypto.randomUUID()
+    let isTurnedOff = onOrOff === "off"
 
-            const enrichedUpdate = encodeListWithMixedTypes([
-                clientUpdateId,
-                update,
-            ])
-            // we may have server take unencoded enrichedUpdate directly later
+    function onLocalUpdate(update: ClientUpdate) {
+        const clientUpdateId = crypto.randomUUID()
 
-            localCache.addOptimisticUpdate(update, clientUpdateId)
-            server.addUpdates([enrichedUpdate])
-        },
-        async notifyOfRemoteUpdate(update: ClientUpdate, rowId: number) {
+        const enrichedUpdate = encodeListWithMixedTypes([
+            clientUpdateId,
+            update,
+        ])
+        // we may have server take unencoded enrichedUpdate directly later
+
+        localCache.addOptimisticUpdate(update, clientUpdateId)
+        server.addUpdates([enrichedUpdate])
+    }
+    localCRDTInterface.subscribeToLocalUpdates((update) => {
+        if (isTurnedOff) {
+            return
+        }
+        onLocalUpdate(update)
+    })
+    // onLocalUpdate also called by manual sendNonOptimisticUpdate function
+
+    server.subscribeToRemoteUpdates((updates, rowId) => {
+        if (isTurnedOff) {
+            return
+        }
+
+        for (const update of updates) {
             const [clientUpdateId, trueUpdate] = decodeListWithMixedTypes(
                 update
             ) as [string, ClientUpdate]
             if (typeof clientUpdateId !== "string") {
-                throw new Error("Invalid client update id")
+                throw new Error(
+                    "Invalid update format received. Was expecting encoded identifier at start"
+                )
             }
 
             localCache.addCanonicalUpdate(trueUpdate, clientUpdateId)
+            localCRDTInterface.applyRemoteUpdates([trueUpdate])
+        }
+    })
+
+    return {
+        turn(onOrOff: "on" | "off") {
+            isTurnedOff = onOrOff === "off"
+        },
+
+        /** for sending an update without having it be in the crdt. Still caches it */
+        async sendLessOptimisticUpdate(
+            update: ClientUpdate,
+            evenIfTurnedOff: boolean = false
+        ) {
+            if (evenIfTurnedOff || !isTurnedOff) {
+                onLocalUpdate(update)
+            }
         },
     }
 }
 function createOfflineProvider(
-    localCache: ReturnType<typeof createLocalStorageCache>
+    localCRDTInterface: LocalCrdtInterface,
+    localCache: ReturnType<typeof createLocalStorageCache>,
+    onOrOff: "on" | "off"
 ) {
+    let isTurnedOff = onOrOff === "off"
+
+    localCRDTInterface.subscribeToLocalUpdates((update) => {
+        if (isTurnedOff) {
+            return
+        }
+
+        localCache.addOptimisticUpdate(update, crypto.randomUUID())
+    })
+
+    // no need to support receiving remote updates, as we are offline
+    // may need to add a function for it though or may not we'll see
+
     return {
-        notifyOfLocalUpdate(update: ClientUpdate) {
-            const clientUpdateId = crypto.randomUUID()
-            localCache.addOptimisticUpdate(update, clientUpdateId)
+        turn(onOrOff: "on" | "off") {
+            isTurnedOff = onOrOff === "off"
         },
     }
 }

@@ -39,20 +39,33 @@ io.on("connection", (socket) => {
     })
 
     // add an update to a doc
-    socket.on("addUpdate", (docId: string, update: Uint8Array) => {
+    socket.on("addUpdate", (docId, update, callback) => {
         console.log(socket.id, docId, "addUpdate")
 
         if (typeof docId !== "string") {
             console.error("DocId was not a string! may have been null")
-            // TODO, add method to notify client that their update request failed
+            callback({
+                success: false,
+                errorMessage: "DocId was not a string! may have been null",
+            })
             return
         }
+
         try {
             const id = addDocOperation(docId, update)
+
+            callback({
+                success: true,
+                rowId: id,
+            })
             // notify this and other clients listening to this doc
             io.to(docId).emit("newUpdate", docId, update, id)
         } catch (error) {
-            console.error("Failed to add update!", error)
+            console.error("Error adding update!", error)
+            callback({
+                success: false,
+                errorMessage: "500",
+            })
         }
     })
 

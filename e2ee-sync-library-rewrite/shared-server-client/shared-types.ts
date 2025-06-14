@@ -9,7 +9,15 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
     startListeningToDoc: (docId: string) => void
     stopListeningToDoc: (docId: string) => void
-    addUpdate: (docId: string, update: Uint8Array) => void
+    addUpdate: (
+        docId: string,
+        update: Uint8Array,
+        callback: (
+            result:
+                | { success: true; rowId: number }
+                | { success: false; errorMessage: string }
+        ) => void
+    ) => void
     applySnapshot: (
         docId: string,
         snapshot: Uint8Array,

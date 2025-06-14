@@ -26,10 +26,13 @@ export function createLocalStorageCache() {
         },
 
         async getCanonicalState() {
-            return
+            return [] as UpdateWithId[]
+        },
+        async getUnconfirmedOptimisticUpdates() {
+            return [] as UpdateWithId[]
         },
         async getStateWithOptimistic() {
-            return
+            return [] as UpdateWithId[]
         },
     }
 }

@@ -75,7 +75,15 @@ export function getBaseServerConnectionInterface() {
         },
 
         addUpdate: (docId: string, update: SealedUpdate) => {
-            socket.emit("addUpdate", docId, update)
+            return new Promise<number>((resolve, reject) => {
+                socket.emit("addUpdate", docId, update, (result) => {
+                    if (!result.success) {
+                        reject(new Error(result.errorMessage))
+                    } else {
+                        resolve(result.rowId)
+                    }
+                }
+            })
         },
 
         subscribeToRemoteUpdates: (
