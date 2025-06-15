@@ -43,6 +43,7 @@ export function getServerInterface(
 }
 
 // also binds to a doc apparently.
+// TODO: rewrite this whole function. Split out the part that does the time batching vs the part that binds it to the doc id. Maybe even rewrite this whole file
 function getServerInterfaceWithTimeBatching(
     docId: DocId,
     server: BaseServerConnectionInterfaceShape,
@@ -116,7 +117,22 @@ function getServerInterfaceWithTimeBatching(
         timeBatchingConfigReal.timeBetweenUpdatesMs
     )
 
-    const returnValuePart: BoundFirstAll<typeof basicInterface> = {
+    function setTheUpdateSendingInterval() {
+        intervalId = setInterval(
+            onTimeToSendUpdates,
+            timeBatchingConfigReal.timeBetweenUpdatesMs
+        )
+    }
+
+    const returnValuePart: BoundFirstAll<
+        Omit<
+            typeof basicInterface,
+            "onUnexpectedlyDisconnected" | "onReconnected"
+        >
+    > & {
+        onUnexpectedlyDisconnected: typeof basicInterface.onUnexpectedlyDisconnected
+        onReconnected: typeof basicInterface.onReconnected
+    } = {
         crypto: basicInterface.crypto,
 
         addUpdates: async (updates: ClientUpdate[]) => {
@@ -164,7 +180,18 @@ function getServerInterfaceWithTimeBatching(
             connected = false
             return basicInterface.disconnect()
         },
+        onUnexpectedlyDisconnected: basicInterface.onUnexpectedlyDisconnected,
+        onReconnected: basicInterface.onReconnected,
     }
+    // todo: make sure this works properly (will probably rewrite everything eventually btw)
+    basicInterface.onUnexpectedlyDisconnected(() => {
+        clearInterval(intervalId)
+        connected = false
+    })
+    basicInterface.onReconnected(() => {
+        connected = true
+        setTheUpdateSendingInterval()
+    })
     return {
         ...returnValuePart,
         getTimeBatchingConfig: () => timeBatchingConfigReal,
@@ -173,10 +200,7 @@ function getServerInterfaceWithTimeBatching(
         setTimeBatchingConfig: (newConfig: typeof timeBatchingConfig) => {
             timeBatchingConfigReal = newConfig
             clearInterval(intervalId)
-            intervalId = setInterval(
-                onTimeToSendUpdates,
-                timeBatchingConfigReal.timeBetweenUpdatesMs
-            )
+            setTheUpdateSendingInterval()
         },
     }
 }
@@ -189,8 +213,10 @@ function getBasicEncryptedServerInterface(
     const out = {
         crypto,
 
-        connect: () => server.connect(),
-        disconnect: () => server.disconnect(),
+        connect: server.connect,
+        disconnect: server.disconnect,
+        onUnexpectedlyDisconnected: server.onUnexpectedlyDisconnected,
+        onReconnected: server.onReconnected,
 
         addUpdates: async (docId: DocId, updates: ClientUpdate[]) => {
             const sealedUpdate = await crypto.clientMessagesToSealedMessage(

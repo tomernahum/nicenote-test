@@ -60,6 +60,8 @@ io.on("connection", (socket) => {
             })
             // notify this and other clients listening to this doc
             io.to(docId).emit("newUpdate", docId, update, id)
+
+            console.log("success")
         } catch (error) {
             console.error("Error adding update!", error)
             callback({
@@ -113,18 +115,20 @@ io.on("connection", (socket) => {
                 rowId: lastUpdateRow,
             })
         }
-    ),
-        socket.on(
-            "getDoc",
-            (
-                docId: string,
-                callback: (
-                    docOperations: { id: number; operation: Uint8Array }[]
-                ) => void
-            ) => {
-                const x = getAllDocOperations(docId)
+    )
 
-                callback(x)
-            }
-        )
+    socket.on(
+        "getDoc",
+        (
+            docId: string,
+            callback: (
+                docOperations: { id: number; operation: Uint8Array }[]
+            ) => void
+        ) => {
+            console.log(socket.id, docId, "getDoc")
+            const x = getAllDocOperations(docId)
+
+            callback(x)
+        }
+    )
 })

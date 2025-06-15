@@ -25,19 +25,15 @@ const updateListeners = new Map<
     (sealedMessage: SealedUpdate, rowId: number) => void
 >()
 
-const serverConnections: string[] = []
-
 export function getBaseServerConnectionInterface() {
     const SERVER_URL = "http://localhost:3000"
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
         SERVER_URL,
         {
-            reconnection: undefined,
+            autoConnect: false, // do not connect upon initialization.
+            reconnection: true, // do reconnect automatically
         }
     )
-
-    const myId = crypto.randomUUID()
-    serverConnections.push(myId)
 
     return {
         // may deprecate this flow of connecting first idk
@@ -59,20 +55,42 @@ export function getBaseServerConnectionInterface() {
             })
         },
 
-        /** If all instances of serverConnectionInterface are disconnected, the underlying socketio/websocket connection to the server will be closed. may be better to do by docId  */
         disconnect: () => {
             return new Promise<void>((resolve) => {
-                serverConnections.splice(serverConnections.indexOf(myId), 1)
-                if (serverConnections.length === 0) {
-                    socket.disconnect()
-                    socket.on("disconnect", () => {
-                        resolve()
-                    })
-                } else {
+                socket.disconnect()
+                if (socket.disconnected) {
                     resolve()
+                    return
                 }
+                socket.on("disconnect", (reason, description) => {
+                    resolve()
+                })
             })
         },
+
+        // can also add on connected, on disconnected, though users can use the promise returned after calling connect/disconnect
+
+        onUnexpectedlyDisconnected: (callback: () => void) => {
+            const func = (reason, description) => {
+                if (
+                    reason !== "io client disconnect" &&
+                    reason !== "io server disconnect" // not sure if this should be included or not
+                ) {
+                    callback()
+                }
+            }
+            socket.on("disconnect", func)
+            return () => {
+                socket.off("disconnect", func)
+            }
+        },
+        onReconnected: (callback: () => void) => {
+            socket.io.on("reconnect", callback)
+            return () => {
+                socket.io.off("reconnect", callback)
+            }
+        },
+        // can also add onceReconnected
 
         addUpdate: (docId: string, update: SealedUpdate) => {
             return new Promise<number>((resolve, reject) => {
