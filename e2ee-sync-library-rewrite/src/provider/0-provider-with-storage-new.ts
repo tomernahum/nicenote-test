@@ -26,9 +26,17 @@ export type LocalCrdtInterface = {
  * @param reconciliationStrategy
  * controls what happens when we go from offline to online mode and the states are not the same
  * - automatic: does not use both mode or the secondaryLocalCrdtInterface, instead just merges the crdt updates/states between the local and the server and lets the crdt handle what state comes out
- * - smart-manual: if an easily resolved conflict is detected, it is resolved automatically. Otherwise, (todo: callback maybe) we go into both mode and the caller is responsible for merging online and offline representing crdts as and when they see fit. Not yet implemented.
+ * - smart-manual: if only one of the server state and the local state has changed since we were last online/in-sync, the divergence is resolved automatically. Otherwise, we go into both mode, and the caller is responsible for merging the online and offline representing crdts as they see fit & on their own timeline. Not yet implemented.
  *
  * once the caller is done with both mode, they can call __todo__ to transition to online mode, keeping just the online-representing crdt state as the new canonical state
+ *
+ * @param mainLocalCrdtInterface - the main local crdt interface.
+ * In online mode, this represents the online state + optimistic updates. Updates to it are sent to online (and also persisted)
+ * In offline mode, this represents the local state. Updates to it are persisted
+ * In both mode, this represents the local state. updates to it are persisted but not sent online.  secondaryLocalCrdtInterface represents the online state. changes to secondaryLocalCrdtInterface are sent online but not persisted.
+ * @param secondaryLocalCrdtInterface - the secondary local crdt interface. (currently) Only updated/listened to in both mode. It represents the online state + optimistic updates. Updates to it are sent to online, but not persisted unlike the regular mainLocalCrdtInterface. See also: mainLocalCrdtInterface
+ *
+ * In both online and in both mode, There will be a way to make updates directly to the server without displaying them optimistically.(you should make your display based on the crdt state) To make optimistic updates you just update the crdt and we listen to it reactively and send to server. to make non-optimistic updates there will be a method you can call here that will send to the server but not the crdt state. all changes confirmed by the server whether by you or by another device will be added to the crdt state.
  */
 export function createProvider(
     mainLocalCrdtInterface: LocalCrdtInterface,
@@ -57,64 +65,7 @@ export function createProvider(
     )
 
     // todo: make sure any initial state from the crdt is merged into the local cache / offline provider properly
-
-    async function onConnectionEstablished() {
-        // TODO make it correctly
-        const mergeMode = "auto"
-        // todo: make mergeMode a param, and add a mode that sometimes goes into both mode instead for manual merging
-        if (mergeMode === "auto") {
-            // merge the server state and the local cache state
-            // TODO: look over.    Right now it is merging with the crdt holder not the local cache. Which may be fine
-
-            const remoteDocUpdates = await server.getRemoteUpdateList()
-            const remoteDocUpdatesWithoutIds = remoteDocUpdates.map(
-                (u) => u.update
-            )
-
-            mainLocalCrdtInterface.applyRemoteUpdates(
-                remoteDocUpdatesWithoutIds
-            )
-
-            const diffUpdates =
-                mainLocalCrdtInterface.getChangesNotAppliedToAnotherDoc(
-                    remoteDocUpdatesWithoutIds
-                )
-
-            // Send diff updates to server
-            await server.addUpdates(diffUpdates)
-            // promise should resolve when server confirms receipt. Or throw if it fails
-
-            // what if an update comes in while we are merging? or user makes an update while we are merging? TODO
-            // maybe this logic needs to go in the provider?
-
-            // once merged, transition to online mode
-            offlineProvider.turn("off")
-            onlineProvider.turn("on")
-        }
-
-        //@ts-ignore
-        if (mergeMode === "auto2") {
-            // merge the server state and the local cache state
-            const pendingUpdates =
-                await localPersistedCache.getUnconfirmedOptimisticUpdates()
-
-            const encodedPendingUpdates = pendingUpdates.map((u) =>
-                encodeListWithMixedTypes([u.id, u.update])
-            )
-
-            await server.addUpdates(encodedPendingUpdates)
-            // promise should resolve when server confirms receipt. Or throw if it fails
-
-            // what if user makes an update while we are merging? TODO
-            // maybe this logic needs to go in the provider?
-
-            // once merged, transition to online mode
-            offlineProvider.turn("off")
-            onlineProvider.turn("on")
-        }
-    }
-
-    // todo: m
+    // TODO
 
     // always start in offline mode
     let mode: "online" | "offline" | "both" = "offline"
@@ -161,30 +112,78 @@ export function createProvider(
         // two approaches (?):
         // 1) combine the local cache list and the server list
         // 2) use the local crdt
+        // the local crdt is supposed to represent the state of the local cache, so we can just call it to get the state
+
+        /*
+            we want to have online mode 
+            
+            wait can we go into online mode, queue the diff shit to go up (but have it be stayed as optimistic update), and that's it?
+            if it succeeds, then yeah. And we can listen for new updates
+            if it fails though, we don't have retry failed important updates functionality, so it would be lost (uh oh)
+            
+            so instead we can fully simulate online mode but only go into real online mode once we know our local state has merged
+            
+            I mean we don't actually discard failed updates yet afaik. I guess we will only discard updates sent by online mode. but still no retry. I guess if it fails to send we would want to send message to our user "failed to merge update up, would you like to try again? or try to go into both mode, or discard the local state?" or we could just fail the whole ->online mode and communicate the reason it failed afawwk
+        */
+
+        // draft code
+        const remoteDocUpdates = (await server.getRemoteUpdateList()).map(
+            (u) => u.update
+        )
+
+        // reference code from prev draft:
+        let temp: boolean = false
+        if (temp) {
+            // merge the server state and the local cache state
+            // TODO: look over.    Right now it is merging with the crdt holder not the local cache. Which may be fine
+
+            const remoteDocUpdates = await server.getRemoteUpdateList()
+            const remoteDocUpdatesWithoutIds = remoteDocUpdates.map(
+                (u) => u.update
+            )
+
+            mainLocalCrdtInterface.applyRemoteUpdates(
+                remoteDocUpdatesWithoutIds
+            )
+
+            const diffUpdates =
+                mainLocalCrdtInterface.getChangesNotAppliedToAnotherDoc(
+                    remoteDocUpdatesWithoutIds
+                )
+
+            // could also have a static method that doesn't modify our real crdt?
+
+            // Send diff updates to server
+            await server.addUpdates(diffUpdates)
+            // promise should resolve when server confirms receipt. Or throw if it fails
+
+            // what if an update comes in while we are merging? or user makes an update while we are merging? TODO
+            // maybe this logic needs to go in the provider?
+
+            // once merged, transition to online mode
+            offlineProvider.turn("off")
+            onlineProvider.turn("on")
+        }
     }
 
     /*
         may be like this or implemented slightly differently:
         
-        we will need to detect if an automatic merge is possible in smart-manual mode.
-        for this we will need to detect if the server state has changed since the last time we were online
-        if no: we just merge up
-        if yes: we will need to detect if the local state has changed since the last time we were online
-            if no: we just merge down
-            if yes: we have divergent states, and we need to go into both mode
+        we will need to detect if an automatic merge is desired in smart-manual mode.
         
-        so we check 
-        server-state-when-last-online vs current-server state
-        & 
-        server-state-when-last-online vs current-local state
-        or
-        local-state-when-last-online vs current-local state
-        (these should be equal I think)
+        hasServerUpdatedSinceLastOnline() 
+        hasMyStateUpdatedSinceLastOnline()
+        if neither: you're done
+        if just me: merge up
+        if just server: merge down  (some users may not want this - can be a different merge strategy)
+        if both: (assume they are not equal - then we have conflicting state) enter both mode
         
-        how to detect this?
-        1) see if the final states are equal. Can have a method in the crdt provider to test this
-        2) see if all the updates are equal. Not ideal because there could be snapshotted/squashed updates
-        3) see if the last update has the same identity (on current-server vs last-seen-server or on current-)
+        how to detect if it's updated? either compare the last update's id, or call the crdt provider to compare the equality of states
+        what if it's been updated but only by being snapshotted? maybe the id of the snapshot can remain the same as the last update
+        what if it's been updated but to something and back again? subjective whether we should auto merge in this case, but I think we should - so maybe we should detect by comparing equality via the crdt provider
+        
+        crdtProvider.static.areTheseEqual(serverState[], localState[])
+        instance.isAnotherDocEqualToMe(serverState[]) (very similar to getChangesNotAppliedToAnotherDoc)
         
     */
 
