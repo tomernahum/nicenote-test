@@ -1,5 +1,5 @@
 // TODO: It would be cool to make a system where there are arbitrarily many signing identities, and it just returns to the application code who made a change, and the application can decide to apply that change differently based on that parameter (including not applying it at all)
-
+// that way we can make stuff like comments sections where people can post comments as themselves but not edit/delete other's comments
 import { decodeList, encodeList } from "./1-encodingList"
 
 type SignatureKey = CryptoKey // todo: narrow the type

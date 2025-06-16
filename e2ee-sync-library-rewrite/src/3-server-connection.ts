@@ -70,27 +70,38 @@ export function getBaseServerConnectionInterface() {
 
         // can also add on connected, on disconnected, though users can use the promise returned after calling connect/disconnect
 
-        onUnexpectedlyDisconnected: (callback: () => void) => {
-            const func = (reason, description) => {
-                if (
+        onConnected: (callback: (isReconnection: boolean) => void) => {
+            const onConnectedCB = () => callback(false)
+            const onReconnectedCB = () => callback(true)
+
+            socket.on("connect", onConnectedCB)
+            socket.io.on("reconnect", onReconnectedCB)
+
+            return () => {
+                socket.off("connect", onConnectedCB)
+                socket.io.off("reconnect", onReconnectedCB)
+            }
+        },
+        onDisconnected: (callback: (unexpected: boolean) => void) => {
+            type DisconnectCallback = Parameters<
+                typeof socket.on<"disconnect">
+            >[1]
+
+            const onDisconnectedCB: DisconnectCallback = (
+                reason,
+                description
+            ) => {
+                callback(
                     reason !== "io client disconnect" &&
-                    reason !== "io server disconnect" // not sure if this should be included or not
-                ) {
-                    callback()
-                }
+                        reason !== "io server disconnect"
+                )
             }
-            socket.on("disconnect", func)
+
+            socket.on("disconnect", onDisconnectedCB)
             return () => {
-                socket.off("disconnect", func)
+                socket.off("disconnect", onDisconnectedCB)
             }
         },
-        onReconnected: (callback: () => void) => {
-            socket.io.on("reconnect", callback)
-            return () => {
-                socket.io.off("reconnect", callback)
-            }
-        },
-        // can also add onceReconnected
 
         addUpdate: (docId: string, update: SealedUpdate) => {
             return new Promise<number>((resolve, reject) => {

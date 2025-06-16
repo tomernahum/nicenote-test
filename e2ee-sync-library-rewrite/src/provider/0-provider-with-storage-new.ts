@@ -21,21 +21,33 @@ export type LocalCrdtInterface = {
     disconnect: () => void
 }
 
+/**
+ *
+ * @param reconciliationStrategy
+ * controls what happens when we go from offline to online mode and the states are not the same
+ * - automatic: does not use both mode or the secondaryLocalCrdtInterface, instead just merges the crdt updates/states between the local and the server and lets the crdt handle what state comes out
+ * - smart-manual: if an easily resolved conflict is detected, it is resolved automatically. Otherwise, (todo: callback maybe) we go into both mode and the caller is responsible for merging online and offline representing crdts as and when they see fit. Not yet implemented.
+ *
+ * once the caller is done with both mode, they can call __todo__ to transition to online mode, keeping just the online-representing crdt state as the new canonical state
+ */
 export function createProvider(
     mainLocalCrdtInterface: LocalCrdtInterface,
     secondaryLocalCrdtInterface: LocalCrdtInterface,
     server: ReturnType<typeof getServerInterface>,
-    storage: any,
-    params: {}
+    storageProvider: any, // todo
+    reconciliationStrategy: "automatic" | "smart-manual"
+    // params: {}
 ) {
     // always start in offline mode
-    let mode: "online" | "offline" | "both" = "offline"
+    // let mode: "online" | "offline" | "both" = "offline"
 
+    const serverConnection = server
     const localPersistedCache = createLocalStorageCache()
+
     const offlineProvider = createOfflineProvider(
         mainLocalCrdtInterface,
         localPersistedCache,
-        "on"
+        "off"
     )
     const onlineProvider = createOnlineProvider(
         mainLocalCrdtInterface,
@@ -43,6 +55,8 @@ export function createProvider(
         server,
         "off"
     )
+
+    // todo: make sure any initial state from the crdt is merged into the local cache / offline provider properly
 
     async function onConnectionEstablished() {
         // TODO make it correctly
@@ -99,17 +113,80 @@ export function createProvider(
             onlineProvider.turn("on")
         }
     }
-    async function onConnectionLost() {
-        if (mode === "online") {
-            // transition to offline mode
-            onlineProvider.turn("off")
-            offlineProvider.turn("on")
-        }
-        // todo: both mode logic
-    }
+
+    // todo: m
+
+    // always start in offline mode
+    let mode: "online" | "offline" | "both" = "offline"
+    offlineProvider.turn("on")
 
     // Establish server connections, detect disconnection and reconnection
-    // todo
+    const connectionPromise = serverConnection.connect()
+
+    connectionPromise.catch(() => {
+        // connection failed to establish
+        // keep mode as is: offline.
+        // keep onlineProvider off and offlineProvider on
+    })
+    serverConnection.onDisconnected(() => {
+        // connection lost
+        if (mode === "online") {
+            mode = "offline"
+            onlineProvider.turn("off")
+            offlineProvider.turn("on")
+        } else if (mode === "both") {
+            // TODO: make the transitions correct here
+        } else {
+            console.error("Connection lost in unexpected mode", mode)
+        }
+    })
+    serverConnection.onConnected((isReconnection) => {
+        // connection gained or regained
+        // either transition into online mode or both mode, depending on configuration
+        if (reconciliationStrategy === "automatic") {
+            //
+            autoMergeLocalAndServerStates()
+        } else if (reconciliationStrategy === "smart-manual") {
+            // TODO: implement
+        } else {
+            console.error(
+                "Unexpected reconciliation strategy",
+                reconciliationStrategy
+            )
+        }
+    })
+
+    async function autoMergeLocalAndServerStates() {
+        // todo
+        // two approaches (?):
+        // 1) combine the local cache list and the server list
+        // 2) use the local crdt
+    }
+
+    /*
+        may be like this or implemented slightly differently:
+        
+        we will need to detect if an automatic merge is possible in smart-manual mode.
+        for this we will need to detect if the server state has changed since the last time we were online
+        if no: we just merge up
+        if yes: we will need to detect if the local state has changed since the last time we were online
+            if no: we just merge down
+            if yes: we have divergent states, and we need to go into both mode
+        
+        so we check 
+        server-state-when-last-online vs current-server state
+        & 
+        server-state-when-last-online vs current-local state
+        or
+        local-state-when-last-online vs current-local state
+        (these should be equal I think)
+        
+        how to detect this?
+        1) see if the final states are equal. Can have a method in the crdt provider to test this
+        2) see if all the updates are equal. Not ideal because there could be snapshotted/squashed updates
+        3) see if the last update has the same identity (on current-server vs last-seen-server or on current-)
+        
+    */
 
     return {
         //

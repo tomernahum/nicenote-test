@@ -8,7 +8,7 @@
 		generateSigningKeyPair,
 		generateSymmetricEncryptionKey,
 		getUnsafeTestingCryptoConfig
-	} from '../../../crypto/index';
+	} from '../../../e2ee-sync-library-rewrite/crypto/index';
 	import Quill from 'quill';
 	import QuillCursors from 'quill-cursors';
 	import * as Y from 'yjs';
@@ -204,7 +204,7 @@
 			console.log('Started using bad signing key', { prevConfig: cryptoConfig });
 			return {
 				...cryptoConfig,
-				signingMode: 'skip'
+				signingMode: 'skip',
 				signingKey: (await generateSigningKeyPair()).privateKey
 				// encryptionKey: await generateSymmetricEncryptionKey()
 			};

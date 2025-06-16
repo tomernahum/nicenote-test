@@ -118,20 +118,31 @@ function getServerInterfaceWithTimeBatching(
     )
 
     function setTheUpdateSendingInterval() {
+        clearInterval(intervalId)
         intervalId = setInterval(
             onTimeToSendUpdates,
             timeBatchingConfigReal.timeBetweenUpdatesMs
         )
     }
+    basicInterface.onConnected(() => {
+        connected = true
+        setTheUpdateSendingInterval()
+    })
+    basicInterface.onDisconnected(() => {
+        clearInterval(intervalId)
+        connected = false
+    })
+
+    // basicInterface.onReconnected(() => {
+    //     connected = true
+    //     setTheUpdateSendingInterval()
+    // })
 
     const returnValuePart: BoundFirstAll<
-        Omit<
-            typeof basicInterface,
-            "onUnexpectedlyDisconnected" | "onReconnected"
-        >
+        Omit<typeof basicInterface, "onConnected" | "onDisconnected">
     > & {
-        onUnexpectedlyDisconnected: typeof basicInterface.onUnexpectedlyDisconnected
-        onReconnected: typeof basicInterface.onReconnected
+        onConnected: typeof basicInterface.onConnected
+        onDisconnected: typeof basicInterface.onDisconnected
     } = {
         crypto: basicInterface.crypto,
 
@@ -180,18 +191,11 @@ function getServerInterfaceWithTimeBatching(
             connected = false
             return basicInterface.disconnect()
         },
-        onUnexpectedlyDisconnected: basicInterface.onUnexpectedlyDisconnected,
-        onReconnected: basicInterface.onReconnected,
+        onConnected: basicInterface.onConnected,
+        onDisconnected: basicInterface.onDisconnected,
     }
     // todo: make sure this works properly (will probably rewrite everything eventually btw)
-    basicInterface.onUnexpectedlyDisconnected(() => {
-        clearInterval(intervalId)
-        connected = false
-    })
-    basicInterface.onReconnected(() => {
-        connected = true
-        setTheUpdateSendingInterval()
-    })
+
     return {
         ...returnValuePart,
         getTimeBatchingConfig: () => timeBatchingConfigReal,
@@ -215,8 +219,8 @@ function getBasicEncryptedServerInterface(
 
         connect: server.connect,
         disconnect: server.disconnect,
-        onUnexpectedlyDisconnected: server.onUnexpectedlyDisconnected,
-        onReconnected: server.onReconnected,
+        onConnected: server.onConnected,
+        onDisconnected: server.onDisconnected,
 
         addUpdates: async (docId: DocId, updates: ClientUpdate[]) => {
             const sealedUpdate = await crypto.clientMessagesToSealedMessage(
