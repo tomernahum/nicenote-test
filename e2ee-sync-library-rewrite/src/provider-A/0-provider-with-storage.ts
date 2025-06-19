@@ -95,6 +95,7 @@ export function createProvider(
         // connection gained or regained
         // either transition into online mode or both mode, depending on configuration
         if (reconciliationStrategy === "automatic") {
+            // turn online
             //
             autoMergeLocalAndServerStates()
         } else if (reconciliationStrategy === "smart-manual") {
@@ -108,6 +109,31 @@ export function createProvider(
     })
 
     async function autoMergeLocalAndServerStates() {
+        // simulate online mode so we don't miss any updates
+        const inMemoryCache = createInMemoryCache()
+        const ephemeralOnlineProvider = createOnlineProvider(
+            mainLocalCrdtInterface,
+            inMemoryCache,
+            server,
+            "off"
+        )
+        ephemeralOnlineProvider.turn("on")
+
+        /* 
+            Steps that need doing:
+            - get the remote doc updates
+            - apply remote doc updates to the crdt
+            ----
+            - get the unconfirmed local updates
+            - apply unconfirmed local updates to the server
+            
+            optimization: squash unconfirmed local updates
+            optimization: get only the diff of local state vs server state
+            (local state)
+        
+        */
+
+        // --------
         // todo
         // two approaches (?):
         // 1) combine the local cache list and the server list
@@ -127,9 +153,10 @@ export function createProvider(
         */
 
         // draft code
-        const remoteDocUpdates = (await server.getRemoteUpdateList()).map(
-            (u) => u.update
-        )
+        // onlineProvider.
+
+        // onlineProvider.sendLessOptimisticUpdate(remoteDocUpdates)
+        // onlineProvider.sendLessOptimisticUpdate(remoteDocUpdates)
 
         // reference code from prev draft:
         let temp: boolean = false
@@ -248,25 +275,25 @@ function createOnlineProvider(
             isTurnedOff = onOrOff === "off"
         },
 
-        // maybe:
-        async initializeConnectionWithMergeAndTurnOn() {
-            const pendingClientUpdates = (
-                await localCache.getUnconfirmedOptimisticUpdates()
-            ).map((u) => encodeListWithMixedTypes([u.id, u.update]))
-            const serverState = (await server.getRemoteUpdateList()).map(
-                (u) => u.update
-            )
-            // localCRDT should have the pending updates and previous server state already
+        // // maybe:
+        // async initializeConnectionWithMergeAndTurnOn() {
+        //     const pendingClientUpdates = (
+        //         await localCache.getUnconfirmedOptimisticUpdates()
+        //     ).map((u) => encodeListWithMixedTypes([u.id, u.update]))
+        //     const serverState = (await server.getRemoteUpdateList()).map(
+        //         (u) => u.update
+        //     )
+        //     // localCRDT should have the pending updates and previous server state already
 
-            localCRDTInterface.applyRemoteUpdates(serverState)
-            const diffUpdates =
-                localCRDTInterface.getChangesNotAppliedToAnotherDoc(serverState)
+        //     localCRDTInterface.applyRemoteUpdates(serverState)
+        //     const diffUpdates =
+        //         localCRDTInterface.getChangesNotAppliedToAnotherDoc(serverState)
 
-            // todo: merge with server state
-            // todo: transition to online mode
-            // also need to make sure the remoteUpdateSubscriptions and stuff is really on
-            // maybe before we do any of this we need to implement server disconnect notification logic and recconect
-        },
+        //     // todo: merge with server state
+        //     // todo: transition to online mode
+        //     // also need to make sure the remoteUpdateSubscriptions and stuff is really on
+        //     // maybe before we do any of this we need to implement server disconnect notification logic and recconect
+        // },
 
         /** for sending an update without having it be in the crdt. Still caches it */
         async sendLessOptimisticUpdate(
