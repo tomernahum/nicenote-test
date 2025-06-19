@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	// import { createSyncedYDocProviderDemo } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
-	import { createYjsSyncProvider } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
+	import {
+		createYjsSyncProvider,
+		createYjsSyncProviderNew
+	} from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
 
 	// import { getUnsafeTestingEncryptionKey } from '../../../e2ee-sync-library-rewrite/src/2-crypto-factory';
 	import {
@@ -81,12 +84,20 @@
 		// 	}
 		// 	throw error;
 		// });
-		const remoteDocYBindingProvider = await createYjsSyncProvider(yDoc, {
-			remoteDocId,
-			cryptoConfig: await getUnsafeTestingCryptoConfig(),
-			mergeInitialState: true
-			// mergeInitialState: false
+
+		// old way
+		// const remoteDocYBindingProvider = await createYjsSyncProvider(yDoc, {
+		// 	remoteDocId,
+		// 	cryptoConfig: await getUnsafeTestingCryptoConfig(),
+		// 	mergeInitialState: true
+		// 	// mergeInitialState: false
+		// });
+		const remoteDocYBindingProvider = await createYjsSyncProviderNew(yDoc, {
+			docId: remoteDocId,
+			cryptoConfig: await getUnsafeTestingCryptoConfig()
 		});
+
+		// const remoteDocYBindingProvider = await createProvider();
 
 		// Specify awareness information for local user to integrate with quill-cursors
 		remoteDocYBindingProvider.awareness.setLocalStateField('user', {
@@ -188,6 +199,13 @@
 		});
 		promise.then((res) => {
 			editor = res;
+			editor.yBindingProvider.onConnected(() => {
+				console.log('CONNECTED');
+			});
+			editor.yBindingProvider.onDisconnected(() => {
+				alert('DISCONNECTED');
+				console.log('DISCONNECTED');
+			});
 		});
 		return async () => {
 			(await promise).deleteEditor();

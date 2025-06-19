@@ -1,5 +1,4 @@
 // basically utils
-// not actually used atow
 
 export function createObservable<T>(initialValue: T) {
     let value = initialValue

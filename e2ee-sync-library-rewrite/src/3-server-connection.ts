@@ -32,6 +32,7 @@ export function getBaseServerConnectionInterface() {
         {
             autoConnect: false, // do not connect upon initialization.
             reconnection: true, // do reconnect automatically
+            // TODO: make sure we do not queue updates if the connection is lost....
         }
     )
 
@@ -68,8 +69,6 @@ export function getBaseServerConnectionInterface() {
             })
         },
 
-        // can also add on connected, on disconnected, though users can use the promise returned after calling connect/disconnect
-
         onConnected: (callback: (isReconnection: boolean) => void) => {
             const onConnectedCB = () => callback(false)
             const onReconnectedCB = () => callback(true)
@@ -105,6 +104,10 @@ export function getBaseServerConnectionInterface() {
 
         addUpdate: (docId: string, update: SealedUpdate) => {
             return new Promise<number>((resolve, reject) => {
+                if (!socket.connected) {
+                    reject(new Error("Socket is disconnected"))
+                    return
+                }
                 socket.emit("addUpdate", docId, update, (result) => {
                     if (!result.success) {
                         reject(new Error(result.errorMessage))
@@ -122,6 +125,9 @@ export function getBaseServerConnectionInterface() {
             updateListeners.set(docId, callback)
 
             console.log("SUBSCRIBING TO DOC", docId)
+
+            // this function is okay to be queued while offline since it is not writing
+            // so no (!socket.connected) check
 
             socket.emit("startListeningToDoc", docId)
             socket.on(
@@ -146,6 +152,10 @@ export function getBaseServerConnectionInterface() {
             return new Promise<
                 { rowId: number; sealedMessage: SealedUpdate }[]
             >((resolve, reject) => {
+                if (!socket.connected) {
+                    reject(new Error("Socket is disconnected"))
+                    return
+                }
                 socket.emit("getDoc", docId, (data) => {
                     resolve(
                         data.map(({ id, operation }) => ({
@@ -162,6 +172,9 @@ export function getBaseServerConnectionInterface() {
             snapshot: Uint8Array,
             lastUpdateRowToReplace: number // may change to another indicator of what is in the snapshot. Valid if we never receive an update out of order from it's row... with current server implementation I think it should be fine, but not 100%
         ) => {
+            if (!socket.connected) {
+                throw new Error("Socket is disconnected")
+            }
             return new Promise<number>((resolve, reject) => {
                 socket.emit(
                     "applySnapshot",
@@ -178,7 +191,5 @@ export function getBaseServerConnectionInterface() {
                 )
             })
         },
-
-        // TODO: what about onConnectionLost??
     }
 }

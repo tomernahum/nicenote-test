@@ -21,10 +21,11 @@ type UpdateWithId = {
  *
  */
 export function createLocalStorageCache() {
+    return createInMemoryCache()
     const lastSeenCanonicalState = []
     const unconfirmedOptimisticUpdates = []
     return {
-        async addOptimisticUpdate(update: ClientUpdate, identifier: string) {
+        async addOptimisticUpdate(update: UpdateWithId) {
             return
         },
         async revokeOptimisticUpdate(identifier) {
@@ -50,7 +51,45 @@ export function createLocalStorageCache() {
 }
 
 export function createInMemoryCache() {
-    return createLocalStorageCache()
+    let lastSeenCanonicalState: ClientUpdate[] = []
+    let unconfirmedOptimisticUpdates: UpdateWithId[] = []
+    return {
+        async addOptimisticUpdate(update: UpdateWithId) {
+            unconfirmedOptimisticUpdates.push(update)
+        },
+
+        // we may just scrap this feature entirely. server doesn't see update contents so it doesn't reject them dynamically, only based on the users write permission to that doc. which if that changed, nothing will work and the problem can be dealt with after they reload the page or something. Would also simplify things (kill ids, maybe can have just one cache?). Any actions that are illegal will instead be ignored by other clients (except some stuff like writing to entire doc position may also be rejected by server to avoid ddos of client). And the current client
+        async revokeOptimisticUpdate(identifier) {
+            const index = unconfirmedOptimisticUpdates.findIndex(
+                (u) => u.id === identifier
+            )
+            if (index === -1) {
+                console.warn(
+                    "tried to revoke optimistic update that doesn't exist"
+                )
+                return
+            }
+            unconfirmedOptimisticUpdates.splice(index, 1)
+        },
+        async addCanonicalUpdate(update: ClientUpdate, identifier?: string) {
+            lastSeenCanonicalState.push(update)
+        },
+        async setCanonicalState(updates: ClientUpdate[]) {
+            lastSeenCanonicalState = updates
+        },
+
+        async getCanonicalState() {
+            return lastSeenCanonicalState
+        },
+        async getUnconfirmedOptimisticUpdates() {
+            return unconfirmedOptimisticUpdates
+        },
+        async getStateWithOptimistic() {
+            return lastSeenCanonicalState.concat(
+                unconfirmedOptimisticUpdates.map((u) => u.update)
+            )
+        },
+    }
 }
 /*
     Problem:

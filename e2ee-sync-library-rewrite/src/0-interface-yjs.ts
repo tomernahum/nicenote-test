@@ -6,7 +6,7 @@ import {
     removeAwarenessStates,
 } from "y-protocols/awareness.js"
 
-import { getUnsafeTestingCryptoConfig } from "./2-crypto-factory"
+import { CryptoConfig, getUnsafeTestingCryptoConfig } from "./2-crypto-factory"
 import { getServerInterface } from "./1-server-client"
 import { type ClientUpdate } from "./-types"
 import {
@@ -15,6 +15,7 @@ import {
     createCrdtSyncProvider,
 } from "./0-provider"
 import { createEventsHelper } from "./ts-helper-lib"
+import { createProvider } from "./provider-A/0-provider-with-storage"
 // ----
 
 /**
@@ -42,6 +43,36 @@ export async function createExampleYjsSyncProvider(yDoc: Y.Doc) {
         cryptoConfig: await getUnsafeTestingCryptoConfig(),
         mergeInitialState: true,
     })
+}
+
+export async function createYjsSyncProviderNew(
+    yDoc: Y.Doc,
+    params: {
+        docId: string
+        cryptoConfig: CryptoConfig
+    }
+) {
+    const yCrdtInterface = createProppaYjsCRDTInterface(yDoc)
+    const serverInterface = getServerInterface(
+        params.docId,
+        params.cryptoConfig,
+        {
+            timeBetweenUpdatesMs: 100,
+            sendUpdatesToServerWhenNoUserUpdate: true,
+        }
+    )
+
+    const syncProvider = await createProvider(
+        yCrdtInterface,
+        yCrdtInterface,
+        serverInterface,
+        "automatic"
+    )
+    return {
+        ...syncProvider,
+        awareness: yCrdtInterface.awareness,
+    }
+    // reusing same one for second param since it's currently unused
 }
 
 // ----
@@ -86,9 +117,9 @@ function createProppaCRDTProvider<CRDTUpdate>(
             const crdtEncoded = remoteDocChanges.map((update) =>
                 localInterfaceUpdateEncoder.decode(update)
             )
-            return localCrdtInterface.getChangesNotAppliedToAnotherDoc(
-                crdtEncoded
-            )
+            const res =
+                localCrdtInterface.getChangesNotAppliedToAnotherDoc(crdtEncoded)
+            return encodeFromCrdt(res)
         },
         disconnect: () => {
             localCrdtInterface.disconnect()
@@ -265,6 +296,7 @@ export function createBaseYjsProvider(
             remoteDocUpdates: YProviderUpdate[]
             // may have been good to take an already merged/ ydoc?
         ) => {
+            // TODO I'm pretty sure there is a more efficient yjs api for this
             const remoteDoc = new Y.Doc()
             remoteDocUpdates.forEach((update) => {
                 if (update.type == "awareness") {
