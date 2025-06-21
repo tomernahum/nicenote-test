@@ -19,6 +19,7 @@
 	import { QuillBinding } from 'y-quill';
 	import 'quill/dist/quill.bubble.css';
 	import 'quill/dist/quill.snow.css';
+	import DocDebugDisplay from './DocDebugDisplay.svelte';
 
 	function initializeQuillEditor(element: HTMLElement | string) {
 		const QUILL_TOOLBAR = [
@@ -182,6 +183,8 @@
 	// 	};
 	// }
 
+	const REMOTE_DOC_ID = 'EFGHI';
+
 	let noteElem: HTMLDivElement; // defaults to undefined
 
 	let editor: Awaited<ReturnType<typeof createCollaborativeQuillEditor>>;
@@ -195,7 +198,7 @@
 		// we may want to use something other than quill (like prosemirror) for the final app
 		const promise = createCollaborativeQuillEditor({
 			domElement: noteElem,
-			remoteDocId: 'EFGHI'
+			remoteDocId: REMOTE_DOC_ID
 		});
 		promise.then((res) => {
 			editor = res;
@@ -247,9 +250,16 @@
 	become read onlyer</button
 >
 
-<button> Stop with the minimum updates</button>
+<!-- <button> Stop with the minimum updates</button> -->
+<!-- <button on:click={() => console.log(editor.yDoc)}> Log yDoc</button> -->
+<button on:click={() => console.log(editor.yDoc.getText('quill').toString())}>Log yDoc</button>
 
 <div bind:this={noteElem} id="note" style="overflow: visible;"></div>
+
+<!-- 
+<DocDebugDisplay remoteDocId={REMOTE_DOC_ID} /> -->
+
+<!-- <pre style="overflow: scroll; max-height: 600px;">{editor.yDoc.getText('quill').toString()}</pre> -->
 
 <style>
 	:global(.ql-bubble .ql-tooltip) {

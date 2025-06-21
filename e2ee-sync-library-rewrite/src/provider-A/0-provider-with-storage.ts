@@ -120,27 +120,30 @@ export async function createProvider(
             const updates =
                 await localPersistedCache.getUnconfirmedOptimisticUpdates()
 
-            // TODO: make sure the updates are merged (should be done by the cache maybe?)
-            const mergedUpdates = updates
-                .map((u) => u.update)
-                .map((u) => getEnrichedUpdate(u))
-            // could also do Y.mergeUpdates (wrapped by crdt provider)
+            if (updates.length > 0) {
+                // todo should send update do it in any case to uniform behavior (serverInterface should support sending empty array)
+                // TODO: make sure the updates are merged (should be done by the cache maybe?)
+                const mergedUpdates = updates
+                    .map((u) => u.update)
+                    .map((u) => getEnrichedUpdate(u))
+                // could also do Y.mergeUpdates (wrapped by crdt provider)
 
-            // send up the offline updates
-            const [res, error] = await tryCatch2(
-                serverConnection.addUpdates(mergedUpdates) // right now I believe there is no timeout so it will only reject if the server rejects the updates or if the connection is for sure lost
-            )
-            if (error) {
-                console.error(
-                    "Failed to send offline updates up to server. ",
-                    error
+                // send up the offline updates
+                const [res, error] = await tryCatch2(
+                    serverConnection.addUpdates(mergedUpdates) // right now I believe there is no timeout so it will only reject if the server rejects the updates or if the connection is for sure lost
                 )
-                // TODO FOR REAL: display error to caller instead of alerting
-                alert(
-                    "Failed to merge local state up to the server. Maybe your connection is unstable, or maybe your permissions have been downgraded, or maybe it's a bug on our end. Please report. For now we are keeping you in offline mode (manual merge / both modes mode coming soon) (option to just go with the online version coming soon - but you could clear your storage). Reload the app to try again. - sync library " // very bad if a non-affiliated-with-me app ships this code since it could sound like its coming from them
-                )
-                // don't go into online mode for now
-                return // TODO: retry at least a few times (config option?)
+                if (error) {
+                    console.error(
+                        "Failed to send offline updates up to server. ",
+                        error
+                    )
+                    // TODO FOR REAL: display error to caller instead of alerting
+                    alert(
+                        "Failed to merge local state up to the server. Maybe your connection is unstable, or maybe your permissions have been downgraded, or maybe it's a bug on our end. Please report. For now we are keeping you in offline mode (manual merge / both modes mode coming soon) (option to just go with the online version coming soon - but you could clear your storage). Reload the app to try again. - sync library " // very bad if a non-affiliated-with-me app ships this code since it could sound like its coming from them
+                    )
+                    // don't go into online mode for now
+                    return // TODO: retry at least a few times (config option?)
+                }
             }
 
             // download the current server state
@@ -204,6 +207,10 @@ function createOnlineProvider(
     localCache: ReturnType<typeof createLocalStorageCache>,
     server: ReturnType<typeof getServerInterface>,
     onOrOff: "on" | "off"
+    // params: {
+    //     doSnapshots: boolean
+    //     snapshotIntervalMs: number
+    // }
 ) {
     let isTurnedOff = onOrOff === "off"
 
@@ -217,16 +224,23 @@ function createOnlineProvider(
         // we may have server take unencoded enrichedUpdate directly later
 
         localCache.addOptimisticUpdate({ update, id: clientUpdateId })
-        server.addUpdates([enrichedUpdate]).catch((e) => {
-            console.warn(
-                "Failed to send update to server. Revoking it from the cache... would revert from crdt but too hard for now",
-                e
-            )
-            localCache.revokeOptimisticUpdate(clientUpdateId)
-            // todo: remove it from yjs. no easy way to do that lol. Could reconstruct it from the cache
-        })
+        // console.log("added update", clientUpdateId, "to cache")
+        server
+            .addUpdates([enrichedUpdate])
+            .catch((e) => {
+                console.warn(
+                    "Failed to send update to server. Revoking it from the cache... would revert from crdt but too hard for now",
+                    e
+                )
+                localCache.revokeOptimisticUpdate(clientUpdateId)
+                // todo: remove it from yjs. no easy way to do that lol. Could reconstruct it from the cache
+            })
+            .then(() => {
+                // console.log("added update", clientUpdateId, "to server")
+            })
     }
     localCRDTInterface.subscribeToLocalUpdates((update) => {
+        // console.log("new update", isTurnedOff)
         if (isTurnedOff) {
             return
         }
@@ -234,7 +248,11 @@ function createOnlineProvider(
     })
     // onLocalUpdate also called by manual sendNonOptimisticUpdate function
 
+    let rowIdAtLastSnapshot: number | null = null
+    let lastSeenRowId: number | null = null
+
     server.subscribeToRemoteUpdates((updates, rowId) => {
+        // console.debug("received updates", updates.length)
         if (isTurnedOff) {
             return
         }
@@ -244,15 +262,37 @@ function createOnlineProvider(
                 update
             ) as [string, ClientUpdate]
             if (typeof clientUpdateId !== "string") {
-                throw new Error(
-                    "Invalid update format received. Was expecting encoded identifier at start"
-                )
+                console.error("Invalid update format received", update)
+                continue
+                // throw new Error(
+                //     "Invalid update format received. Was expecting encoded identifier at start"
+                // )
             }
 
             localCache.addCanonicalUpdate(trueUpdate, clientUpdateId)
             localCRDTInterface.applyRemoteUpdates([trueUpdate])
         }
+
+        lastSeenRowId = rowId
     })
+
+    // Snapshots:
+    setInterval(async () => {
+        if (isTurnedOff) {
+            return
+        }
+        if (lastSeenRowId === null) {
+            return
+        }
+        if (rowIdAtLastSnapshot && lastSeenRowId - rowIdAtLastSnapshot < 15) {
+            return
+        }
+        const clientSnapshot = await localCRDTInterface.getSnapshot()
+        server.applySnapshot(clientSnapshot, lastSeenRowId)
+        console.log("did snapshot", lastSeenRowId, rowIdAtLastSnapshot)
+        rowIdAtLastSnapshot = lastSeenRowId
+    }, 1000_00000)
+    // todo: snapshot config options
 
     return {
         turn(onOrOff: "on" | "off") {

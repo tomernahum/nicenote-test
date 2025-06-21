@@ -58,7 +58,7 @@ export async function createYjsSyncProviderNew(
         params.cryptoConfig,
         {
             timeBetweenUpdatesMs: 100,
-            sendUpdatesToServerWhenNoUserUpdate: true,
+            sendUpdatesToServerWhenNoUserUpdate: false,
         }
     )
 
@@ -254,9 +254,18 @@ export function createBaseYjsProvider(
         }[]
     ) {
         updates.forEach((update) => {
+            // console.log("applying update to local Ydoc")
             if (update.type === "doc") {
+                console.log("applying doc update to local Ydoc")
                 Y.applyUpdate(yDoc, update.operation, providerId) // the third parameter sets the transaction-origin
+
+                // BUG: this part eventually stops working randomly (after rapid updates at once?)
+                // Possibly related bug: server stops persisting eventually
+                yDoc.once("update", () => {
+                    console.log("local Ydoc updated")
+                })
             } else if (update.type === "awareness") {
+                // console.log("applying awareness update to local Ydoc")
                 applyAwarenessUpdate(awareness, update.operation, yDoc)
             }
         })

@@ -52,16 +52,16 @@ io.on("connection", (socket) => {
         }
 
         try {
-            const id = addDocOperation(docId, update)
+            const rowId = addDocOperation(docId, update)
 
             callback({
                 success: true,
-                rowId: id,
+                rowId: rowId,
             })
             // notify this and other clients listening to this doc
-            io.to(docId).emit("newUpdate", docId, update, id)
+            io.to(docId).emit("newUpdate", docId, update, rowId)
 
-            console.log("success")
+            console.log(docId, "success", rowId)
         } catch (error) {
             console.error("Error adding update!", error)
             callback({

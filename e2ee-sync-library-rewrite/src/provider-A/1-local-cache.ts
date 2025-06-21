@@ -21,7 +21,7 @@ type UpdateWithId = {
  *
  */
 export function createLocalStorageCache() {
-    return createInMemoryCache()
+    // return createInMemoryCache()
     const lastSeenCanonicalState = []
     const unconfirmedOptimisticUpdates = []
     return {
