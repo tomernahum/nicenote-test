@@ -43,9 +43,9 @@ export async function createProvider(params: {
         // for now, just transition into online mode:
 
         // merge the local state and the online state
-        const onlineState = (await server.getRemoteUpdateList()).map(
-            (u) => u.update
-        )
+        const onlineUpdates = await server.getRemoteUpdateList()
+        let lastSeenRowId: number = onlineUpdates.at(-1)?.rowId ?? 0
+        const onlineState = onlineUpdates.map((u) => u.update)
         localCrdtInterface.applyRemoteUpdates(onlineState)
         const diffUpdates =
             localCrdtInterface.getChangesNotAppliedToAnotherDoc(onlineState)
@@ -66,7 +66,14 @@ export async function createProvider(params: {
         })
         server.subscribeToRemoteUpdates((updates, rowId) => {
             localCrdtInterface.applyRemoteUpdates(updates)
+            lastSeenRowId = rowId
         })
+
+        // periodically do snapshots
+        setInterval(() => {
+            const snapshot = localCrdtInterface.getSnapshot()
+            server.applySnapshot(snapshot, lastSeenRowId)
+        }, 5000)
     })
     server.onDisconnected((unexpected) => {
         // disconnected
