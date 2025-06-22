@@ -1,15 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	// import { createSyncedYDocProviderDemo } from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
-	import {
-		createYjsSyncProvider,
-		createYjsSyncProviderNew
-	} from '../../../e2ee-sync-library-rewrite/src/0-interface-yjs';
+	import { createDemoYjsSyncProviderNewB } from '../../../e2ee-sync-library-rewrite/src/provider-B/create-y-provider';
 
 	// import { getUnsafeTestingEncryptionKey } from '../../../e2ee-sync-library-rewrite/src/2-crypto-factory';
 	import {
 		generateSigningKeyPair,
-		generateSymmetricEncryptionKey,
 		getUnsafeTestingCryptoConfig
 	} from '../../../e2ee-sync-library-rewrite/crypto/index';
 	import Quill from 'quill';
@@ -19,7 +15,6 @@
 	import { QuillBinding } from 'y-quill';
 	import 'quill/dist/quill.bubble.css';
 	import 'quill/dist/quill.snow.css';
-	import DocDebugDisplay from './DocDebugDisplay.svelte';
 
 	function initializeQuillEditor(element: HTMLElement | string) {
 		const QUILL_TOOLBAR = [
@@ -93,10 +88,7 @@
 		// 	mergeInitialState: true
 		// 	// mergeInitialState: false
 		// });
-		const remoteDocYBindingProvider = await createYjsSyncProviderNew(yDoc, {
-			docId: remoteDocId,
-			cryptoConfig: await getUnsafeTestingCryptoConfig()
-		});
+		const remoteDocYBindingProvider = await createDemoYjsSyncProviderNewB(yDoc);
 
 		// const remoteDocYBindingProvider = await createProvider();
 

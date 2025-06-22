@@ -240,6 +240,7 @@ export function createBaseYjsProvider(
     }
 
     /*returned*/ function disconnectFromYDoc() {
+        // TODO: ?? why disconnect with no connect
         yDoc.off("update", onDocUpdate)
         awareness.off("update", onAwarenessUpdate)
         if (removeClientAwarenessDataOnWindowClose) {
@@ -247,20 +248,47 @@ export function createBaseYjsProvider(
         }
     }
 
+    let p = Promise.resolve()
     /*returned*/ function applyRemoteUpdates(
         updates: {
             type: "doc" | "awareness"
             operation: Uint8Array
         }[]
     ) {
-        updates.forEach((update) => {
+        if (updates.length > 1) {
+            console.warn("multiple updates", updates)
+        }
+        // updates.forEach((update) => {
+        for (const update of updates) {
             // console.log("applying update to local Ydoc")
+            if (update.type === "doc") {
+                console.log("applying doc update to local Ydoc")
+                setTimeout(() => {
+                    Y.applyUpdate(yDoc, update.operation, providerId) // the third parameter sets the transaction-origin
+                })
+                // p.then(() => {
+                //     Y.applyUpdate(yDoc, update.operation, providerId) // the third parameter sets the transaction-origin
+                // })
+            } else if (update.type === "awareness") {
+                console.log("applying awareness update to local Ydoc")
+                p.then(() => {
+                    applyAwarenessUpdate(awareness, update.operation, yDoc)
+                })
+            }
+
+            continue
             if (update.type === "doc") {
                 console.log("applying doc update to local Ydoc")
                 Y.applyUpdate(yDoc, update.operation, providerId) // the third parameter sets the transaction-origin
 
-                // BUG: this part eventually stops working randomly (after rapid updates at once?)
-                // Possibly related bug: server stops persisting eventually
+                // BUG: this part breaks permanently if we ever do rapid updates at once (we do get up to the above log)
+                // but this didn't used to happen with the old provider
+                // also: server also stops persisting past this point. Probably because yDoc.on stops working which is what it's based on
+                // it still happens even if i remove the yDoc.once ai chat
+                // maybe it is getting corrupted updates? or maybe there is a race condition problem with multiple calls to this in different async threads
+                // race condition -like thing could maybe come from:
+                // applyUpdate triggering a listener that calls applyUpdate again from inside it
+                // something about microtask queue
                 yDoc.once("update", () => {
                     console.log("local Ydoc updated")
                 })
@@ -268,7 +296,7 @@ export function createBaseYjsProvider(
                 // console.log("applying awareness update to local Ydoc")
                 applyAwarenessUpdate(awareness, update.operation, yDoc)
             }
-        })
+        }
     }
 
     // ---

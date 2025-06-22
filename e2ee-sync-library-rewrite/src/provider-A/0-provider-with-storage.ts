@@ -291,7 +291,8 @@ function createOnlineProvider(
         server.applySnapshot(clientSnapshot, lastSeenRowId)
         console.log("did snapshot", lastSeenRowId, rowIdAtLastSnapshot)
         rowIdAtLastSnapshot = lastSeenRowId
-    }, 1000_00000)
+    }, 5000)
+    // BUG: if we do not snapshot frequently the server stops persisting new updates in the db. exact conditions of bug occurrence unclear. see 0-interface-yjs bug comment too
     // todo: snapshot config options
 
     return {
